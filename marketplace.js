@@ -310,12 +310,14 @@ modulesСardTemplate = `<div class="card" bs-tab="modules">
             </div>
         </div>
         <div class="col-4">
+            <!--
             <select class="form-select form-select-sm versionsSelect" aria-label=".form-select-sm">
                  {{each(options.module.available)}}
                      <option value="{{@this.name}}">{{@this.name}}</option>
                  {{/each}}
             </select>
             <button type="button" class="btn btn-sm btn-outline-primary float-right" data-module='{{module.name | safe}}' data-module-type='{{module.type | safe}}' data-version='{{module.version | safe}}' onclick="updateModule(event)">Update</button>
+            -->
         </div>
     </div>
 </div>
@@ -431,7 +433,7 @@ You can create new dialogs and add them to marketplace by following the steps be
         var cards = []
         var processed_dialogs = []
         var {starting_point, not_installed, market_to_dialog} = this.mergeMarkets()
-        var appPath = store.get("appPath", process.cwd())
+        var appPath = sessionStore.get("appPath", process.cwd())
         var userDialogs = store.get("nonBaseDialogs", [])
         var userd = false
         starting_point.forEach(function(chapter) {
