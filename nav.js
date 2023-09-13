@@ -3,8 +3,7 @@ const nav = {
     "tab": "file",
     "buttons": [
         "./loadDatasetFromPackage",
-        "./marketplace",
-        "./tableOfContent",
+        "./marketplace"
     ]
 }
 
