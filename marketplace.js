@@ -449,10 +449,7 @@ You can create new dialogs and add them to marketplace by following the steps be
                     if (typeof(button) == "object" && button.children == undefined) {
                         cards.push(Sqrl.Render(outerthis.card_template, {dialog: button, chapter: chapter.name}))
                     } else if (typeof(button) == "object" && button.children != undefined) {
-                        button.children.forEach(function(chd) {
-                                             // let child = chd.replace(/\\/g, "/")
-                            let child = chd
-                                                 // let child = path.normalize(chd.replace(/\\/g, "/"))
+                        button.children.forEach(function(child) {
                             // console.log("Child:", child)
                             var install_visible = 'hidden' 
                             var uninstall_visible = ''
@@ -460,7 +457,7 @@ You can create new dialogs and add them to marketplace by following the steps be
                                 install_visible = ''
                                 uninstall_visible = 'hidden'
                             }
-                             child = chd.replace(/\\/g, "\\\\")
+                             child = (process.platform === 'win32') ? child.replace(/\\/g, "\\\\") : child
                             try {
                                 cards.push(Sqrl.Render(outerthis.card_template, {dialog: require(child).item.nav, chapter: chapter.name, uninstall: uninstall_visible, install: install_visible, update: 'hidden', delete: 'hidden', child: child, userd: false}))
                             } catch(ex) {
@@ -472,9 +469,6 @@ You can create new dialogs and add them to marketplace by following the steps be
                             }
                         })
                     } else {
-                        // button = button.replace(/\\/g, "/")
-                        // button = button.replace(/\\/g, "\\\\")
-                        // button = path.normalize(button.replace(/\\/g, "/"))
                         // console.log("Button:", button)
                         if (userDialogs.indexOf(button) > -1) {
                             userd = true
@@ -491,7 +485,7 @@ You can create new dialogs and add them to marketplace by following the steps be
                             install_visible = ''
                             uninstall_visible = 'hidden'
                         }
-                        button = button.replace(/\\/g, "\\\\")
+                        button = (process.platform === 'win32') ? button.replace(/\\/g, "\\\\") : button
                         try {
                             cards.push(Sqrl.Render(outerthis.card_template, {dialog: require(button).item.nav, chapter: chapter.name, uninstall: uninstall_visible, install: install_visible, update: 'hidden', delete: 'hidden', child: button, userd: userd}))
                             processed_dialogs.push(button)
