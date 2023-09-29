@@ -434,11 +434,9 @@ You can create new dialogs and add them to marketplace by following the steps be
         var cards = []
         var processed_dialogs = []
         var {starting_point, not_installed, market_to_dialog} = this.mergeMarkets()
-        console.log("Not Installed:",not_installed)
         var appPath = sessionStore.get("appPath", process.cwd())
         var userDialogs = store.get("nonBaseDialogs", [])
         var userd = false
-        console.log("render Mkt Place=======")
         starting_point.forEach(function(chapter) {
             if (chapter.tab !== 'file' && chapter.tab !== 'tools') {
                 outerthis.chapters.push(Sqrl.Render(outerthis.chapter_template, {id: chapter.tab.replace(/[^A-Z0-9]/ig, "_"), chapter: chapter.name ? chapter.name : chapter.tab}))
@@ -450,7 +448,6 @@ You can create new dialogs and add them to marketplace by following the steps be
                         cards.push(Sqrl.Render(outerthis.card_template, {dialog: button, chapter: chapter.name}))
                     } else if (typeof(button) == "object" && button.children != undefined) {
                         button.children.forEach(function(child) {
-                            // console.log("Child:", child)
                             var install_visible = 'hidden' 
                             var uninstall_visible = ''
                             if (not_installed.indexOf(child) > -1) {
@@ -469,7 +466,6 @@ You can create new dialogs and add them to marketplace by following the steps be
                             }
                         })
                     } else {
-                        // console.log("Button:", button)
                         if (userDialogs.indexOf(button) > -1) {
                             userd = true
                         } else if (userDialogs.indexOf(path.join(appPath, button)) > -1){
