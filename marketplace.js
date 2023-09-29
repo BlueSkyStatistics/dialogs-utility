@@ -1,7 +1,8 @@
 var Sqrl = require('squirrelly');
 var path = require('path');
 const fs = require('fs')
-
+const Store = require('electron-store');
+const hiddenStore = new Store({name:`hideconfig`});
 const blankDialogs = {
     "menu": [
         {
@@ -423,7 +424,7 @@ You can create new dialogs and add them to marketplace by following the steps be
                 }
             }
         })
-        var hidden_objects = store.get('hiddenMenuObjects', [])
+        var hidden_objects = hiddenStore.get('hiddenMenuObjects', [])
         not_installed = [...new Set([...not_installed ,...hidden_objects])];
         return { starting_point, not_installed, market_to_dialog }
     }
@@ -441,6 +442,7 @@ You can create new dialogs and add them to marketplace by following the steps be
                 outerthis.chapters.push(Sqrl.Render(outerthis.chapter_template, {id: chapter.tab.replace(/[^A-Z0-9]/ig, "_"), chapter: chapter.name ? chapter.name : chapter.tab}))
                 outerthis.dropitems.push(chapter.name ? chapter.name : chapter.tab)
                 chapter.buttons.forEach(function(button) {
+                    
                     userd = false
                     if (typeof(button) == "object" && button.children == undefined) {
                         cards.push(Sqrl.Render(outerthis.card_template, {dialog: button, chapter: chapter.name}))
@@ -452,6 +454,7 @@ You can create new dialogs and add them to marketplace by following the steps be
                                 install_visible = ''
                                 uninstall_visible = 'hidden'
                             }
+                             child = (process.platform === 'win32') ? child.replace(/\\/g, "\\\\") : child
                             try {
                                 cards.push(Sqrl.Render(outerthis.card_template, {dialog: require(child).item.nav, chapter: chapter.name, uninstall: uninstall_visible, install: install_visible, update: 'hidden', delete: 'hidden', child: child, userd: false}))
                             } catch(ex) {
@@ -478,6 +481,7 @@ You can create new dialogs and add them to marketplace by following the steps be
                             install_visible = ''
                             uninstall_visible = 'hidden'
                         }
+                        button = (process.platform === 'win32') ? button.replace(/\\/g, "\\\\") : button
                         try {
                             cards.push(Sqrl.Render(outerthis.card_template, {dialog: require(button).item.nav, chapter: chapter.name, uninstall: uninstall_visible, install: install_visible, update: 'hidden', delete: 'hidden', child: button, userd: userd}))
                             processed_dialogs.push(button)
