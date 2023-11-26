@@ -1,10 +1,27 @@
 {
-    "name": "@BlueSkyStatistics/dialogs/utility",
+    "name": "@BlueSkyStatistics/dialogs/dialogs-utility",
     "productName": "BlueSky Statistics Utility dialogs",
     "description": "Utility dialogs",
-    "keywords": [],
+    "group": "init",
     "main": "nav.js",
     "version": "1.0.3",
+    "subscriptions": ["public"],
+    "moduleMeta": {
+            "path": "{{locals}}/dialogs-utility.asar",
+            "storage": "firebase",
+            "update": "auto",
+            "artifactType": "asar",
+            "extra": {
+                "sourceType": "release",
+                "remote": "BlueSkyStatistics/dialogs-utility"
+            },
+            "removable": true
+    },
+    "minBSkyVersion": null,
+    "minAppVersion": null,
+    "requiredPackages": [],
+    
+    "keywords": [],
     "author": "BlueSky Statistics",
     "scripts": {},
     "dependencies": {
