@@ -59,6 +59,7 @@ class loadDatasetFromPackage extends baseModal {
         var config = {
             id: "loadDatasetFromPackage",
             label: localization.en.title,
+			splitProcessing: false,
             modalType: "one",
             RCode: `
 require(utils)
