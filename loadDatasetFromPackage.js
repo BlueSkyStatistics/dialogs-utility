@@ -56,10 +56,57 @@ class loadDatasetFromPackage extends baseModal {
             }
         }
         super(config, objects, content);
+        const r_help = "help(data,package='utils')"
         this.help = {
             title: loadDatasetFromPackage.t('help.title'),
-            r_help: loadDatasetFromPackage.t('help.r_help'),
-            body: loadDatasetFromPackage.t('help.body')
+            r_help: r_help,
+            body: `
+<b>${loadDatasetFromPackage.t('help.body.descriptionTitle')}</b>
+<br/>
+${loadDatasetFromPackage.t('help.body.descriptionText')}
+<br/>
+<b>${loadDatasetFromPackage.t('help.body.usageTitle')}</b>
+<br/>
+<code>
+    #${loadDatasetFromPackage.t('help.body.usageCode1')}
+    <br/>
+    ${loadDatasetFromPackage.t('help.body.usageCode2')}
+    <br/>
+    #${loadDatasetFromPackage.t('help.body.usageCode3')}
+    <br/>
+    ${loadDatasetFromPackage.t('help.body.usageCode4')}
+    <br/>
+</code>
+<br/>
+<b>${loadDatasetFromPackage.t('help.body.argumentsTitle')}</b>
+<br/>
+<ul>
+    <li>${loadDatasetFromPackage.t('help.body.argumentsList.0')}</li>
+    <li>${loadDatasetFromPackage.t('help.body.argumentsList.1')}</li>
+    <li>${loadDatasetFromPackage.t('help.body.argumentsList.2')}</li>
+</ul>
+<b>${loadDatasetFromPackage.t('help.body.detailsTitle')}</b>
+<br/>
+${loadDatasetFromPackage.t('help.body.detailsText')}
+<br/>
+<b>${loadDatasetFromPackage.t('help.body.valueTitle')}</b>
+<br/>
+${loadDatasetFromPackage.t('help.body.valueText')}
+<br/>
+<b>${loadDatasetFromPackage.t('help.body.examplesTitle')}</b>
+<br/>
+<code>
+    ${loadDatasetFromPackage.t('help.body.exampleCode')}
+</code>
+<br/>
+<b>${loadDatasetFromPackage.t('help.body.packageTitle')}</b>
+<br/>
+${loadDatasetFromPackage.t('help.body.packageText')}
+<br/>
+<b>${loadDatasetFromPackage.t('help.body.helpTitle')}</b>
+<br/>
+${loadDatasetFromPackage.t('help.body.helpText', {r_help: r_help})}
+`
         }
     }
 }
