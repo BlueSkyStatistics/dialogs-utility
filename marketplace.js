@@ -1,8 +1,10 @@
 var Sqrl = require('squirrelly');
 var path = require('path');
 const fs = require('fs')
-const Store = require('electron-store');
-const hiddenStore = new Store({name:`hideconfig`});
+// const Store = require('electron-store');
+// const hiddenStore = new Store({name:`hideconfig`});
+
+
 
 const blankDialogs = {
     "menu": [
@@ -297,7 +299,7 @@ class marketplace {
     </div>
 </div> `
 
-modulesСardTemplate = `<div class="card" bs-tab="modules">
+    modulesСardTemplate = `<div class="card" bs-tab="modules">
 <div class="card-header">
     <div class="row">
         <div class="col-8 title">
@@ -328,10 +330,10 @@ modulesСardTemplate = `<div class="card" bs-tab="modules">
 </div>
 </div>`
 
-help = {
-    title: "Marketplace Help",
-    r_help: "",
-    body: `
+    help = {
+        title: "Marketplace Help",
+        r_help: "",
+        body: `
 <b>Initialization</b>
 <br/>
 To install new dialogs you must select a folder (by clicking 'Select Folder') where the new dialogs will be intalled. Once this path is set the options to install the new dialogs will be displayed.
@@ -348,7 +350,7 @@ You can create new dialogs and add them to marketplace by following the steps be
     <li>Close the marketplace dialog and navigate to the top level menu where you installed the dialog. You will see the new dialog available for use.</li>
 </ol>
     `
-}
+    }
 
     fileProvider(market) {
         var main = {}
@@ -444,9 +446,10 @@ You can create new dialogs and add them to marketplace by following the steps be
                 outerthis.dropitems.push(chapter.name ? chapter.name : chapter.tab)
                 chapter.buttons.forEach(function(button) {
                     userd = false
-                    if (typeof(button) == "object" && button.children == undefined) {
+                    let d;
+                    if (typeof(button) == "object" && button.children === undefined) {
                         cards.push(Sqrl.Render(outerthis.card_template, {dialog: button, chapter: chapter.name}))
-                    } else if (typeof(button) == "object" && button.children != undefined) {
+                    } else if (typeof(button) == "object" && button.children !== undefined) {
                         button.children.forEach(function(child) {
                             var install_visible = 'hidden'
                             var uninstall_visible = ''
@@ -455,17 +458,15 @@ You can create new dialogs and add them to marketplace by following the steps be
                                 uninstall_visible = 'hidden'
                             }
                             try {
-                                const d = getDialog(child)
-                                cards.push(Sqrl.Render(outerthis.card_template, {dialog: d.nav, chapter: chapter.name, uninstall: uninstall_visible, install: install_visible, update: 'hidden', delete: 'hidden', child: child, userd: false}))
+                                d = getDialog(child)
                             } catch(ex) {
                                 if (child.startsWith(".")) {
-                                    const d = getDialog(path.join(appPath, child))
-                                    cards.push(Sqrl.Render(outerthis.card_template, {dialog: d.nav, chapter: chapter.name, uninstall: uninstall_visible, install: install_visible, update: 'hidden', delete: 'hidden', child: child, userd: false}))
+                                    d = getDialog(path.join(appPath, child))
                                 } else {
-                                    const d = getDialog(child)
-                                    cards.push(Sqrl.Render(outerthis.card_template, {dialog: d.nav, chapter: chapter.name, uninstall: uninstall_visible, install: install_visible, update: 'hidden', delete: 'hidden', child: child, userd: false}))
+                                    d = getDialog(child)
                                 }
                             }
+                            cards.push(Sqrl.Render(outerthis.card_template, {dialog: d.nav, chapter: chapter.name, uninstall: uninstall_visible, install: install_visible, update: 'hidden', delete: 'hidden', child: child, userd: false}))
                         })
                     } else {
                         if (userDialogs.indexOf(button) > -1) {
@@ -484,24 +485,23 @@ You can create new dialogs and add them to marketplace by following the steps be
                             uninstall_visible = 'hidden'
                         }
                         try {
-                            const d = getDialog(button)
+                            d = getDialog(button)
                             cards.push(Sqrl.Render(outerthis.card_template, {dialog: d.nav, chapter: chapter.name, uninstall: uninstall_visible, install: install_visible, update: 'hidden', delete: 'hidden', child: button, userd: userd}))
                             processed_dialogs.push(button)
                         } catch(ex) {
                             try {
                                 if (button.startsWith(".")) {
-                                    const d = getDialog(path.join(appPath, button))
-                                    cards.push(Sqrl.Render(outerthis.card_template, {dialog: d.nav, chapter: chapter.name, uninstall: uninstall_visible, install: install_visible, update: 'hidden', delete: 'hidden', child: button, userd: userd}))
+                                    d = getDialog(path.join(appPath, button))
                                     processed_dialogs.push(path.join(appPath, button))
                                 } else {
-                                    const d = getDialog(button)
-                                    cards.push(Sqrl.Render(outerthis.card_template, {dialog: d.nav, chapter: chapter.name, uninstall: uninstall_visible, install: install_visible, update: 'hidden', delete: 'hidden', child: button, userd: userd}))
+                                    d = getDialog(button)
                                     processed_dialogs.push(button)
                                 }
+                                cards.push(Sqrl.Render(outerthis.card_template, {dialog: d.nav, chapter: chapter.name, uninstall: uninstall_visible, install: install_visible, update: 'hidden', delete: 'hidden', child: button, userd: userd}))
                             } catch (ex) {
                                 try {
                                     if (processed_dialogs.indexOf(path.join(market_to_dialog[button], button)) == -1) {
-                                        const d = getDialog(path.join(market_to_dialog[button], button))
+                                        d = getDialog(path.join(market_to_dialog[button], button))
                                         cards.push(Sqrl.Render(outerthis.card_template, {dialog: d.nav, chapter: chapter.name, uninstall: uninstall_visible, install: install_visible, update: 'hidden', delete: 'hidden', child: path.join( market_to_dialog[button], button).replace(/\\/g, "/"), userd: userd}))
                                         processed_dialogs.push(path.join(market_to_dialog[button], button))
                                     }
@@ -512,6 +512,8 @@ You can create new dialogs and add them to marketplace by following the steps be
                             }
                         }
                     }
+                    global.dialogTree = global.dialogTree || new Set() // todo: remove tmp in prod!
+                    global.dialogTree.add(`${chapter.name} > ${button.name} > ${d.nav.name} > ${d.id}.json`) // todo: remove tmp in prod!
                 })
                 outerthis.tabs.push(Sqrl.Render(outerthis.tab_template, {cards: cards, chapter: chapter.name, id: chapter.tab.replace(/[^A-Z0-9]/ig, "_")}))
                 cards = []
@@ -523,6 +525,7 @@ You can create new dialogs and add them to marketplace by following the steps be
             installedModules[i].available = installedModules[i].available.map(a => Object.values(a)[0]);
             modules.push(Sqrl.Render(outerthis.modulesСardTemplate, {module: installedModules[i]}))
         }
+        fs.writeFileSync(path.join(sessionStore.get('appRoot'), 'dialogTree.json'), JSON.stringify(Array.from(global.dialogTree.values()), null, 2)) // todo: remove tmp in prod!
         return Sqrl.Render(this.htmlTemplate, {modal: {id: outerthis.id, label: outerthis.label}, chapters: outerthis.chapters, tabs: outerthis.tabs, dropitems: outerthis.dropitems, modules: modules})
     }
     onShow() {
