@@ -4,7 +4,6 @@ const fs = require('fs')
 const Store = require('electron-store');
 
 const hiddenStore = new Store({name:`hideconfig`});
-let DlgjsonPath = path.join("locales",store.get("locale"),"dialogs.json")
 
 const blankDialogs = {
     "menu": [
