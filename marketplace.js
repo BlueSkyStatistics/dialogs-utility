@@ -2,7 +2,9 @@ var Sqrl = require('squirrelly');
 var path = require('path');
 const fs = require('fs')
 const Store = require('electron-store');
+
 const hiddenStore = new Store({name:`hideconfig`});
+let DlgjsonPath = path.join("locales",store.get("locale"),"dialogs.json")
 
 const blankDialogs = {
     "menu": [
@@ -439,31 +441,35 @@ You can create new dialogs and add them to marketplace by following the steps be
         var userDialogs = store.get("nonBaseDialogs", [])
         var userd = false
         starting_point.forEach(function(chapter) {
+// console.log("CHATPER============",chapter.name)
             if (chapter.tab !== 'file' && chapter.tab !== 'tools') {
                 outerthis.chapters.push(Sqrl.Render(outerthis.chapter_template, {id: chapter.tab.replace(/[^A-Z0-9]/ig, "_"), chapter: chapter.name ? chapter.name : chapter.tab}))
                 outerthis.dropitems.push(chapter.name ? chapter.name : chapter.tab)
                 chapter.buttons.forEach(function(button) {
+// console.log("BUTTON:",button)
                     userd = false
                     if (typeof(button) == "object" && button.children == undefined) {
                         cards.push(Sqrl.Render(outerthis.card_template, {dialog: button, chapter: chapter.name}))
                     } else if (typeof(button) == "object" && button.children != undefined) {
                         button.children.forEach(function(child) {
+// console.log("CHILD:",child)
                             var install_visible = 'hidden'
                             var uninstall_visible = ''
                             if (not_installed.indexOf(child) > -1) {
                                 install_visible = ''
                                 uninstall_visible = 'hidden'
                             }
+                            let fixedchild = (process.platform === 'win32') ? child.replace(/\\/g, "\\\\") : child
                             try {
                                 const d = getDialog(child)
-                                cards.push(Sqrl.Render(outerthis.card_template, {dialog: d.nav, chapter: chapter.name, uninstall: uninstall_visible, install: install_visible, update: 'hidden', delete: 'hidden', child: child, userd: false}))
+                                cards.push(Sqrl.Render(outerthis.card_template, {dialog: d.nav, chapter: chapter.name, uninstall: uninstall_visible, install: install_visible, update: 'hidden', delete: 'hidden', child: fixedchild, userd: false}))
                             } catch(ex) {
                                 if (child.startsWith(".")) {
                                     const d = getDialog(path.join(appPath, child))
-                                    cards.push(Sqrl.Render(outerthis.card_template, {dialog: d.nav, chapter: chapter.name, uninstall: uninstall_visible, install: install_visible, update: 'hidden', delete: 'hidden', child: child, userd: false}))
+                                    cards.push(Sqrl.Render(outerthis.card_template, {dialog: d.nav, chapter: chapter.name, uninstall: uninstall_visible, install: install_visible, update: 'hidden', delete: 'hidden', child: fixedchild, userd: false}))
                                 } else {
                                     const d = getDialog(child)
-                                    cards.push(Sqrl.Render(outerthis.card_template, {dialog: d.nav, chapter: chapter.name, uninstall: uninstall_visible, install: install_visible, update: 'hidden', delete: 'hidden', child: child, userd: false}))
+                                    cards.push(Sqrl.Render(outerthis.card_template, {dialog: d.nav, chapter: chapter.name, uninstall: uninstall_visible, install: install_visible, update: 'hidden', delete: 'hidden', child: fixedchild, userd: false}))
                                 }
                             }
                         })
@@ -474,7 +480,7 @@ You can create new dialogs and add them to marketplace by following the steps be
                             userd = true
                         } else if (Object.keys(market_to_dialog).indexOf(button) > -1 && userDialogs.indexOf(path.join(appPath, market_to_dialog[button], button)) > -1){
                             userd = true
-                        } else if (userDialogs.some((element) => button.endsWith(path.join(element)))) {
+                        } else if (userDialogs.some((element) =>( button.endsWith(path.join(element))))) { //typeof element !== 'object' && 
                             userd = true
                         }
                         var install_visible = 'hidden'
@@ -483,26 +489,27 @@ You can create new dialogs and add them to marketplace by following the steps be
                             install_visible = ''
                             uninstall_visible = 'hidden'
                         }
+                        let fixedbutton = (process.platform === 'win32') ? button.replace(/\\/g, "\\\\") : button
                         try {
                             const d = getDialog(button)
-                            cards.push(Sqrl.Render(outerthis.card_template, {dialog: d.nav, chapter: chapter.name, uninstall: uninstall_visible, install: install_visible, update: 'hidden', delete: 'hidden', child: button, userd: userd}))
+                            cards.push(Sqrl.Render(outerthis.card_template, {dialog: d.nav, chapter: chapter.name, uninstall: uninstall_visible, install: install_visible, update: 'hidden', delete: 'hidden', child: fixedbutton, userd: userd}))
                             processed_dialogs.push(button)
                         } catch(ex) {
                             try {
                                 if (button.startsWith(".")) {
                                     const d = getDialog(path.join(appPath, button))
-                                    cards.push(Sqrl.Render(outerthis.card_template, {dialog: d.nav, chapter: chapter.name, uninstall: uninstall_visible, install: install_visible, update: 'hidden', delete: 'hidden', child: button, userd: userd}))
+                                    cards.push(Sqrl.Render(outerthis.card_template, {dialog: d.nav, chapter: chapter.name, uninstall: uninstall_visible, install: install_visible, update: 'hidden', delete: 'hidden', child: fixedbutton, userd: userd}))
                                     processed_dialogs.push(path.join(appPath, button))
                                 } else {
                                     const d = getDialog(button)
-                                    cards.push(Sqrl.Render(outerthis.card_template, {dialog: d.nav, chapter: chapter.name, uninstall: uninstall_visible, install: install_visible, update: 'hidden', delete: 'hidden', child: button, userd: userd}))
+                                    cards.push(Sqrl.Render(outerthis.card_template, {dialog: d.nav, chapter: chapter.name, uninstall: uninstall_visible, install: install_visible, update: 'hidden', delete: 'hidden', child: fixedbutton, userd: userd}))
                                     processed_dialogs.push(button)
                                 }
                             } catch (ex) {
                                 try {
                                     if (processed_dialogs.indexOf(path.join(market_to_dialog[button], button)) == -1) {
                                         const d = getDialog(path.join(market_to_dialog[button], button))
-                                        cards.push(Sqrl.Render(outerthis.card_template, {dialog: d.nav, chapter: chapter.name, uninstall: uninstall_visible, install: install_visible, update: 'hidden', delete: 'hidden', child: path.join( market_to_dialog[button], button).replace(/\\/g, "/"), userd: userd}))
+                                        cards.push(Sqrl.Render(outerthis.card_template, {dialog: d.nav, chapter: chapter.name, uninstall: uninstall_visible, install: install_visible, update: 'hidden', delete: 'hidden', child: path.join( market_to_dialog[fixedbutton], fixedbutton).replace(/\\/g, "/"), userd: userd}))
                                         processed_dialogs.push(path.join(market_to_dialog[button], button))
                                     }
                                 } catch (ex) {
@@ -656,6 +663,6 @@ You can create new dialogs and add them to marketplace by following the steps be
 }
 
 module.exports = {
-    render: () => new marketplace().compile(),
+    render: () => new marketplace().compile()
     // item: new marketplace().compile()
 }
