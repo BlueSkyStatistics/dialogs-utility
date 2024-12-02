@@ -433,6 +433,7 @@ You can create new dialogs and add them to marketplace by following the steps be
     }
 
     renderContent() {
+        global.dialogTree = global.dialogTree || new Set() // todo: remove tmp in prod!
         var outerthis = this
         var cards = []
         var processed_dialogs = []
@@ -466,6 +467,7 @@ You can create new dialogs and add them to marketplace by following the steps be
                                     d = getDialog(child)
                                 }
                             }
+                            global.dialogTree.add(`${chapter.name} > ${button.name} > ${d.nav.name} > ${d.id}.json`) // todo: remove tmp in prod!
                             cards.push(Sqrl.Render(outerthis.card_template, {dialog: d.nav, chapter: chapter.name, uninstall: uninstall_visible, install: install_visible, update: 'hidden', delete: 'hidden', child: child, userd: false}))
                         })
                     } else {
@@ -511,9 +513,8 @@ You can create new dialogs and add them to marketplace by following the steps be
                                 }
                             }
                         }
+                        global.dialogTree.add(`${chapter.name} > ${button.name} > ${d.nav.name} > ${d.id}.json`) // todo: remove tmp in prod!
                     }
-                    global.dialogTree = global.dialogTree || new Set() // todo: remove tmp in prod!
-                    global.dialogTree.add(`${chapter.name} > ${button.name} > ${d.nav.name} > ${d.id}.json`) // todo: remove tmp in prod!
                 })
                 outerthis.tabs.push(Sqrl.Render(outerthis.tab_template, {cards: cards, chapter: chapter.name, id: chapter.tab.replace(/[^A-Z0-9]/ig, "_")}))
                 cards = []
@@ -525,9 +526,10 @@ You can create new dialogs and add them to marketplace by following the steps be
             installedModules[i].available = installedModules[i].available.map(a => Object.values(a)[0]);
             modules.push(Sqrl.Render(outerthis.modulesСardTemplate, {module: installedModules[i]}))
         }
-        fs.writeFileSync(path.join(sessionStore.get('appRoot'), 'dialogTree.json'), JSON.stringify(Array.from(global.dialogTree.values()), null, 2)) // todo: remove tmp in prod!
+        fs.writeFileSync(path.join(sessionStore.get('userData'), 'dialogTree.json'), JSON.stringify(Array.from(global.dialogTree.values()), null, 2)) // todo: remove tmp in prod!
         return Sqrl.Render(this.htmlTemplate, {modal: {id: outerthis.id, label: outerthis.label}, chapters: outerthis.chapters, tabs: outerthis.tabs, dropitems: outerthis.dropitems, modules: modules})
     }
+    
     onShow() {
         var outerthis = this
         ipcRenderer.invoke('logEvent', {category: "dialog", action: "show", title: "marketplace"})
