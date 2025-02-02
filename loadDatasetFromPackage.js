@@ -70,7 +70,7 @@ BSkyLoadRefresh(BSkyGetDatasetNameFromPackageDatasetList("{{selected.selectAData
         
         this.help = {
             title: loadDatasetFromPackage.t('help.title'),
-            r_help: "help(data,package='utils')",
+            r_help: loadDatasetFromPackage.t('help.r_help'),  //r_help: "help(data,package='utils')",
             body: loadDatasetFromPackage.t('help.body')
         }
 ;
