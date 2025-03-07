@@ -11,6 +11,36 @@ const Store = require('electron-store');
 
 const hiddenStore = new Store({name:`hideconfig`});
 
+// Import your functions
+const { refreshDialog, deleteDialog, removeDialog, addDialog, uploadDialog} = require('./marketUtils')
+
+// Function to handle button clicks
+global.handleMarketActionClick = (button) => {
+    const action = button.getAttribute('data-action');
+    const child = button.getAttribute('data-child');
+    const modal = button.getAttribute('data-modal');
+
+    switch (action) {
+        case 'refresh':
+        case 'reload':
+            refreshDialog(event, child, modal);
+            break;
+        case 'delete':
+            deleteDialog(event, child, modal);
+            break;
+        case 'remove':
+        case 'hide':
+            removeDialog(event, child, modal);
+            break;
+        case 'add':
+        case 'install':
+            addDialog(event, child, modal);
+            break;
+        default:
+            console.error('Unknown action:', action);
+    }
+}
+
 const blankDialogs = {
     "menu": [
         {
@@ -281,28 +311,30 @@ class marketplace {
     <div class="card-header">
         <div class="row">
             <div class="col-8 title">
-                <div calas="d-flex">
+                <div class="d-flex">
                     <div class="d-inline-flex"><h6>{{dialog.name}}</h6></div>
                     <div class="d-inline-flex ml-2">
-                        <div class="{{if(options.userd)}}bg-success{{#else}}bg-primary{{/if}} rounded-pill pl-3 pr-3" style="height: 20px;">{{if(options.userd)}}User Dialog{{#else}}Base dialog{{/if}}</div>
+                        <div class="{{if(options.userd)}}bg-success{{#else}}bg-primary{{/if}} rounded-pill pl-3 pr-3" style="height: 20px;">
+                            {{if(options.userd)}}User Dialog{{#else}}Base dialog{{/if}}
+                        </div>
                     </div>
                 </div>
             </div>
             <div class="col-4">
-            {{if(options.userd)}}
-                <button type="button" class="btn btn-sm btn-outline-warning btn-refresh float-right {{if(options.uninstall=="hidden")}} hidden{{/if}}" onclick="refreshDialog(event, '{{child}}', {{if(options.dialog.modal)}} '{{dialog.modal}}' {{#else}} '{{dialog.modal_id}}' {{/if}})">Reload Dialog</button> 
-                <button type="button" class="btn btn-sm btn-outline-danger float-right " onclick="deleteDialog(event, '{{child}}', '{{dialog.modal}}')">Delete</button> 
-            {{/if}}
-                <button type="button" class="btn btn-sm btn-outline-danger float-right {{if(options.uninstall=="hidden")}} hidden{{/if}}" onclick="removeDialog(event, '{{child}}', {{if(options.dialog.modal)}} '{{dialog.modal}}' {{#else}} '{{dialog.modal_id}}' {{/if}})">Hide</button> 
+                {{if(options.userd)}}
+                    <button type="button" class="btn btn-sm btn-outline-warning btn-refresh float-right {{if(options.uninstall=="hidden")}} hidden{{/if}}" data-action="reload" onclick="handleMarketActionClick(this)" data-child="{{child}}" data-modal="{{if(options.dialog.modal)}}{{dialog.modal}}{{#else}}{{dialog.modal_id}}{{/if}}">Reload Dialog</button>
+                    <button type="button" class="btn btn-sm btn-outline-danger float-right" data-action="delete" onclick="handleMarketActionClick(this)" data-child="{{child}}" data-modal="{{dialog.modal}}">Delete</button>
+                {{/if}}
+                <button type="button" class="btn btn-sm btn-outline-danger float-right {{if(options.uninstall=="hidden")}} hidden{{/if}}" data-action="hide" onclick="handleMarketActionClick(this)" data-child="{{child}}" data-modal="{{if(options.dialog.modal)}}{{dialog.modal}}{{#else}}{{dialog.modal_id}}{{/if}}">Hide</button>
                 <button type="button" class="btn btn-sm btn-outline-warning float-right {{if(options.update=="hidden")}} hidden{{/if}}">Update available</button>
-                <button type="button" class="btn btn-sm btn-outline-primary float-right {{if(options.install=="hidden")}} hidden{{/if}}" onclick="addDialog(event, '{{child}}', {{if(options.dialog.modal)}} '{{dialog.modal}}' {{#else}} '{{dialog.modal_id}}' {{/if}})">Install</button>                                  
+                <button type="button" class="btn btn-sm btn-outline-primary float-right {{if(options.install=="hidden")}} hidden{{/if}}" data-action="install" onclick="handleMarketActionClick(this)" data-child="{{child}}" data-modal="{{if(options.dialog.modal)}}{{dialog.modal}}{{#else}}{{dialog.modal_id}}{{/if}}">Install</button>
             </div>
         </div>
     </div>
     <div class="card-body">
         {{if(options.dialog.description)}}{{ dialog.description | safe }}{{/if}}
     </div>
-</div> `
+</div>`
 
 modulesСardTemplate = `<div class="card" bs-tab="modules">
 <div class="card-header">
@@ -437,6 +469,51 @@ You can create new dialogs and add them to marketplace by following the steps be
         return { starting_point, not_installed, market_to_dialog }
     }
 
+    mergeMarkets() {
+        const providers = {
+            file: this.fileProvider,
+            git: this.gitProvider
+        };
+
+        const menuList = store.get('main').menu.map(item => item.name);
+        const markets = store.get('market').markets;
+        const startingPoint = store.get('main').menu;
+        const totalInstalled = [];
+        const notInstalled = [];
+        const marketToDialog = {};
+
+        markets.forEach(market => {
+            const marketData = providers[market.provider](market);
+            const tmpPath = market.path.replace('dialogs.json', '');
+
+            marketData.forEach(marketItem => {
+                const menuIndex = menuList.indexOf(marketItem.name);
+                const menuFromMarket = this.flattenMenu(marketItem);
+
+                if (menuIndex > -1) {
+                    const installedMenu = this.flattenMenu(startingPoint[menuIndex]);
+                    totalInstalled.push(...installedMenu);
+                    const diff = menuFromMarket.filter(n => !totalInstalled.includes(n));
+                    startingPoint[menuIndex].buttons.push(...diff);
+                    notInstalled.push(...diff);
+                } else {
+                    startingPoint.push(marketItem);
+                    const diff = menuFromMarket.filter(n => !totalInstalled.includes(n));
+                    notInstalled.push(...diff);
+                }
+
+                menuFromMarket.forEach(menuName => {
+                    marketToDialog[menuName] = tmpPath;
+                });
+            });
+        });
+
+        const hiddenObjects = hiddenStore.get('hiddenMenuObjects', []);
+        const uniqueNotInstalled = [...new Set([...notInstalled, ...hiddenObjects])];
+
+        return { starting_point: startingPoint, not_installed: uniqueNotInstalled, market_to_dialog: marketToDialog };
+    }
+
     renderContent() {
         global.dialogTree = global.dialogTree || new Set() // todo: remove tmp in prod!
         var outerthis = this
@@ -498,7 +575,16 @@ You can create new dialogs and add them to marketplace by following the steps be
                         let fixedbutton = (process.platform === 'win32') ? button.replace(/\\/g, "\\\\") : button
                         try {
                             d = getDialog(button)
-                            cards.push(Sqrl.Render(outerthis.card_template, {dialog: d.nav, chapter: chapter.name, uninstall: uninstall_visible, install: install_visible, update: 'hidden', delete: 'hidden', child: fixedbutton, userd: userd}))
+                            cards.push(Sqrl.Render(outerthis.card_template, {
+                                dialog: d.nav,
+                                chapter: chapter.name,
+                                uninstall: uninstall_visible,
+                                install: install_visible,
+                                update: 'hidden',
+                                delete: 'hidden',
+                                child: fixedbutton,
+                                userd: userd
+                            }))
                             processed_dialogs.push(button)
                         } catch(ex) {
                             try {
@@ -525,7 +611,7 @@ You can create new dialogs and add them to marketplace by following the steps be
                                 }
                             }
                         }
-                        global.dialogTree.add(`${chapter.name} > ${button.name} > ${d.nav.name} > ${d.id}.json`) // todo: remove tmp in prod!
+                        global.dialogTree.add(`${chapter.name} > ${button?.name} > ${d.nav.name} > ${d.id}.json`) // todo: remove tmp in prod!
                     }
                 })
                 outerthis.tabs.push(Sqrl.Render(outerthis.tab_template, {cards: cards, chapter: chapter.name, id: chapter.tab.replace(/[^A-Z0-9]/ig, "_")}))
@@ -539,7 +625,13 @@ You can create new dialogs and add them to marketplace by following the steps be
             modules.push(Sqrl.Render(outerthis.modulesСardTemplate, {module: installedModules[i]}))
         }
         fs.writeFileSync(path.join(sessionStore.get('userData'), 'dialogTree.json'), JSON.stringify(Array.from(global.dialogTree.values()), null, 2)) // todo: remove tmp in prod!
-        return Sqrl.Render(this.htmlTemplate, {modal: {id: outerthis.id, label: outerthis.label}, chapters: outerthis.chapters, tabs: outerthis.tabs, dropitems: outerthis.dropitems, modules: modules})
+        return Sqrl.Render(this.htmlTemplate, {
+            modal: {id: outerthis.id, label: outerthis.label},
+            chapters: outerthis.chapters,
+            tabs: outerthis.tabs,
+            dropitems: outerthis.dropitems,
+            modules: modules
+        })
     }
     onShow() {
         var outerthis = this
@@ -628,18 +720,17 @@ You can create new dialogs and add them to marketplace by following the steps be
         $(`#${this.id}Save`).prop('disabled', true);
         $(`#${this.id}Save`).html('<i class="fas fa-spinner fa-spin"></i>')
 
-        var res = uploadDialog()
-        var template = this.template
+        const res = uploadDialog()
         if (typeof(res) == 'object'){
             const d = getDialog(res['import'])
-            var template = Sqrl.Render(template, {dialog: d.nav, chapter: res['chapter'], uninstall: 'hidden', install: '', update: 'hidden', delete: 'hidden', child: res['import'], userd: true})
+            const template = Sqrl.Render(this.template, {dialog: d.nav, chapter: res['chapter'], uninstall: 'hidden', install: '', update: 'hidden', delete: 'hidden', child: res['import'], userd: true})
             $(`#market_tab_${res['tab']}`).append(template)
             $(`#market_chapter_${res['tab']}`).trigger('click')
             setTimeout(function() {
                 document.getElementById(`market_tab_${res['tab']}`).scrollIntoView(false)
             }, 1000);
 
-            var userDialogs = store.get("nonBaseDialogs", [])
+            const userDialogs = store.get("nonBaseDialogs", [])
             store.delete("nonBaseDialogs")
             userDialogs.push(res['import']) // this is valied if res is an object
             store.set("nonBaseDialogs", userDialogs)
@@ -672,6 +763,10 @@ You can create new dialogs and add them to marketplace by following the steps be
 }
 
 module.exports = {
-    render: () => new marketplace().compile()
+    render: () => new marketplace().compile(),
+    render2: () => {
+        global.mp = new marketplace()
+        return global.mp.compile()
+    }
     // item: new marketplace().compile()
 }

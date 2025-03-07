@@ -68,7 +68,7 @@ BSkyLoadRefresh(BSkyGetDatasetNameFromPackageDatasetList("{{selected.selectAData
                 name: loadDatasetFromPackage.t('navigation'),
                 icon: "icon-package_install",
                 positionInNav: 1,
-                onclick: `r_before_modal("${config.id}")`,
+                onclick: `r_before_modal('${config.id}')`,
                 modal_id: config.id
             }
         }
