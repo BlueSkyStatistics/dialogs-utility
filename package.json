@@ -1,6 +1,6 @@
 {
     "name": "@BlueSkyStatistics/dialogs/dialogs-utility",
-    "productName": "BlueSky Statistics Utility dialogs",
+    "productName": "BioStat Prime Utility dialogs",
     "description": "Utility dialogs",
     "group": "init",
     "main": "nav.js",
@@ -21,7 +21,7 @@
     "requiredPackages": [],
     
     "keywords": [],
-    "author": "BlueSky Statistics",
+    "author": "BioStat Prime",
     "scripts": {},
     "dependencies": {
         "squirrelly": "7.9.2",

@@ -1,2 +1,2 @@
 # utility Dialogs
-BlueSky Statistics Utility dialogs
+BioStat Prime Utility dialogs
