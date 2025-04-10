@@ -5,27 +5,28 @@
     "group": "init",
     "main": "nav.js",
     "version": "1.0.5",
-    "subscriptions": ["public"],
+    "subscriptions": [
+        "public"
+    ],
     "moduleMeta": {
-            "path": "{{locals}}/dialogs-utility.asar",
-            "storage": "firebase",
-            "update": "auto",
-            "artifactType": "asar",
-            "extra": {
-                "sourceType": "release",
-                "remote": "BlueSkyStatistics/dialogs-utility"
-            },
-            "removable": true
+        "path": "{{locals}}/dialogs-utility.asar",
+        "storage": "firebase",
+        "update": "auto",
+        "artifactType": "asar",
+        "extra": {
+            "sourceType": "release",
+            "remote": "BlueSkyStatistics/dialogs-utility"
+        },
+        "removable": true
     },
     "minAppVersion": null,
     "requiredPackages": [],
-    
     "keywords": [],
     "author": "BioStat Prime",
     "scripts": {},
     "dependencies": {
-        "squirrelly": "7.9.2",
-        "electron-store": "^7.0.2"
+        "electron-store": "^7.0.2",
+        "squirrelly": "7.9.2"
     },
     "devDependencies": {
         "asar": "^3.2.0"
