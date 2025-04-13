@@ -427,49 +427,6 @@ You can create new dialogs and add them to marketplace by following the steps be
     }
 
     mergeMarkets() {
-        var proviers = {
-            file: this.fileProvider,
-            git: this.gitProvider
-        }
-        var outerthis = this
-        var menuList = []
-        var tmp_path = ''
-        var not_installed = []
-        var total_installed = []
-        var market_to_dialog = {}
-        var starting_point = store.get('main').menu
-        starting_point.forEach(item => {
-            menuList.push(item.name)
-        })
-        var markets = store.get('market')
-        markets.markets.forEach(market => {
-            var marketData = proviers[market.provider](market)
-            for (var i=0; i<marketData.length; i++) {
-                if (menuList.indexOf(marketData[i].name) > -1) {
-                    var menulist_installed = outerthis.flattenMenu(starting_point[menuList.indexOf(marketData[i].name)])
-                    total_installed.push.apply(total_installed, menulist_installed)
-                    var menu_from_market = outerthis.flattenMenu(marketData[i])
-                    var diff = menu_from_market.filter(n => !total_installed.includes(n))
-                    starting_point[menuList.indexOf(marketData[i].name)].buttons.push.apply(starting_point[menuList.indexOf(marketData[i].name)].buttons, diff)
-                    not_installed.push.apply(not_installed, diff)
-                } else {
-                    starting_point.push(marketData[i])
-                    var menu_from_market = outerthis.flattenMenu(marketData[i])
-                    var diff = menu_from_market.filter(n => !total_installed.includes(n))
-                    not_installed.push.apply(not_installed, diff)
-                }
-                tmp_path = market.path.replace('dialogs.json', '')
-                for(var j=0; j<menu_from_market.length; j++){
-                    market_to_dialog[menu_from_market[j]] = tmp_path
-                }
-            }
-        })
-        var hidden_objects = hiddenStore.get('hiddenMenuObjects', [])
-        not_installed = [...new Set([...not_installed ,...hidden_objects])];
-        return { starting_point, not_installed, market_to_dialog }
-    }
-
-    mergeMarkets() {
         const providers = {
             file: this.fileProvider,
             git: this.gitProvider
@@ -553,7 +510,7 @@ You can create new dialogs and add them to marketplace by following the steps be
                                     cards.push(Sqrl.Render(outerthis.card_template, {dialog: d.nav, chapter: chapter.name, uninstall: uninstall_visible, install: install_visible, update: 'hidden', delete: 'hidden', child: fixedchild, userd: false}))
                                 }
                             }
-                            global.dialogTree.add(`${chapter.name} > ${button.name} > ${d.nav.name} > ${d.id}.json`) // todo: remove tmp in prod!
+                            d && global.dialogTree.add(`${chapter.name} > ${button.name} > ${d.nav?.name} > ${d.id}.json`) // todo: remove tmp in prod!
                             cards.push(Sqrl.Render(outerthis.card_template, {dialog: d.nav, chapter: chapter.name, uninstall: uninstall_visible, install: install_visible, update: 'hidden', delete: 'hidden', child: fixedchild, userd: false}))	  
                         })
                     } else {
@@ -599,19 +556,19 @@ You can create new dialogs and add them to marketplace by following the steps be
                                 }
                                 cards.push(Sqrl.Render(outerthis.card_template, {dialog: d.nav, chapter: chapter.name, uninstall: uninstall_visible, install: install_visible, update: 'hidden', delete: 'hidden', child: fixedbutton, userd: userd}))
                             } catch (ex) {
-                                try {
+                                // try {
                                     if (processed_dialogs.indexOf(path.join(market_to_dialog[button], button)) == -1) {
                                         d = getDialog(path.join(market_to_dialog[button], button))
                                         cards.push(Sqrl.Render(outerthis.card_template, {dialog: d.nav, chapter: chapter.name, uninstall: uninstall_visible, install: install_visible, update: 'hidden', delete: 'hidden', child: path.join( market_to_dialog[fixedbutton], fixedbutton).replace(/\\/g, "/"), userd: userd}))
                                         processed_dialogs.push(path.join(market_to_dialog[button], button))
                                     }
-                                } catch (ex) {
-                                    // dialog.showErrorBox(`skip the ${button} due to error`, `skip the ${button} due to error: \n ${ex}`);
-                                    console.log(ex)
-                                }
+                                // } catch (ex) {
+                                //     // dialog.showErrorBox(`skip the ${button} due to error`, `skip the ${button} due to error: \n ${ex}`);
+                                //     console.log(ex)
+                                // }
                             }
                         }
-                        global.dialogTree.add(`${chapter.name} > ${button?.name} > ${d.nav.name} > ${d.id}.json`) // todo: remove tmp in prod!
+                        d && global.dialogTree.add(`${chapter.name} > ${button?.name} > ${d.nav?.name} > ${d.id}.json`) // todo: remove tmp in prod!
                     }
                 })
                 outerthis.tabs.push(Sqrl.Render(outerthis.tab_template, {cards: cards, chapter: chapter.name, id: chapter.tab.replace(/[^A-Z0-9]/ig, "_")}))
@@ -764,9 +721,9 @@ You can create new dialogs and add them to marketplace by following the steps be
 
 module.exports = {
     render: () => new marketplace().compile(),
-    render2: () => {
-        global.mp = new marketplace()
-        return global.mp.compile()
-    }
+    // render: () => {
+    //     global.mp = new marketplace()
+    //     return global.mp.compile()
+    // },
     // item: new marketplace().compile()
 }

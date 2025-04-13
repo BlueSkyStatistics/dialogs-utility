@@ -1,5 +1,6 @@
 const path = require('path')
 const Store = require("electron-store");
+const fs = require("fs");
 const hiddenStore = new Store({name:`hideconfig`});
 
 function addDialog(ev, it, id) {
@@ -34,20 +35,21 @@ function deleteDialog(ev, itm, id) {
     outer: {
         for (let j = 0; j < markets.length; j++) {
             try {
-                if (!regex.test(markets[j].path)) { //if (markets[j].path != `./dialogs.json`) {
+                // if (!regex.test(markets[j].path)) { //if (markets[j].path != `./dialogs.json`) {
+                if (!markets[j].path.endsWith('dialogs.json')) { //if (markets[j].path != `./dialogs.json`) {
                     dialogJsonDir = path.dirname(markets[j].path)
-                    userDialogjson = JSON.parse(fs.readFileSync(markets[j].path));
+                    userDialogjson = JSON.parse(fs.readFileSync(path.normalize(markets[j].path)));
 
                     for (let i = 0; i < userDialogjson['menu'].length; i++) {
-                        if (userDialogjson['menu'][i]['name'] == chapter) {
+                        if (userDialogjson['menu'][i]['name'] === chapter) {
                             for (let j = 0; j < userDialogjson['menu'][i]['buttons'].length; j++) {
                                 if (userDialogjson['menu'][i]['buttons'][j].startsWith("./")) {
                                     let abspath = path.join(dialogJsonDir, (userDialogjson['menu'][i]['buttons'][j]).replace('.', '')).replace(/\\/g, "/")
-                                    if (abspath == itm) {
+                                    if (abspath === itm) {
                                         userDialogjson['menu'][i]['buttons'].splice(j, 1)
                                         break outer;
                                     }
-                                } else if (userDialogjson['menu'][i]['buttons'][j] == itm) {
+                                } else if (userDialogjson['menu'][i]['buttons'][j] === itm) {
                                     userDialogjson['menu'][i]['buttons'].splice(j, 1)
                                     break outer;
                                 }
