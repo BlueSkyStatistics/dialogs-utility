@@ -182,6 +182,7 @@ function uploadDialog() {
         fs.writeFileSync(path.join(dialogsDir, $("#iconFile")[0].files[0].name), fs.readFileSync($("#iconFile")[0].files[0].path).toString())
     }
     var chapter = $("#addDialogsChapter").val()
+    // todo: fix create dialogs.json if not exists
     var userDialogs = JSON.parse(fs.readFileSync(path.join(dialogsDir, 'dialogs.json')));
     var dialogsImport = path.join(dialogsDir, $("#formFile")[0].files[0].name.replace(".js", ''))
     var tab = ''
