@@ -17,7 +17,7 @@ const nav = () => ({
 })
 
 module.exports = {
-    nav: nav(),
+    // nav: nav(),
     render: () => nav()
 }
 
