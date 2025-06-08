@@ -9,7 +9,12 @@ const path = require('path');
 const fs = require('fs');
 const Store = require('electron-store');
 
-const { refreshDialog, deleteDialog, removeDialog, addDialog, uploadDialog } = require('./marketUtils');
+const {
+    refreshDialog, deleteDialog,
+    removeDialog, addDialog,
+    uploadDialog, searchDialog, checkForSearch,
+} = require('./marketUtils');
+const {dialog, getCurrentWindow} = require("@electron/remote");
 
 // === CONSTANTS ===
 const MARKETPLACE_CONFIG = {
@@ -304,14 +309,8 @@ class TemplateManager {
                             Hide
                         </button>
                         <button type="button" 
-                            class="btn btn-sm btn-outline-warning float-right {{if(options.update=="hidden")}} hidden{{/if}}"
-                        >
-                            Update available
-                        </button>
-                        <button type="button" 
                             class="btn btn-sm btn-outline-primary float-right {{if(options.install=="hidden")}} hidden{{/if}}"
-                            data-child="{{child}}" data-modal="{{if(options.dialog.modal)}}{{dialog.modal}}{{#else}}{{dialog.modal_id}}{{/if}}" 
-                            data-action="install" onclick="handleMarketActionClick(this)"
+                            onclick="global.marketplaceActionHandler.addDialog(event, '{{child}}', '{{if(options.dialog.modal)}}{{dialog.modal}}{{#else}}{{dialog.modal_id}}{{/if}}')"
                         >
                             Install
                         </button>
@@ -357,8 +356,16 @@ class TemplateManager {
 
 // === ACTION HANDLER ===
 class MarketplaceActionHandler {
+    static getInstance() {
+        if (global.marketplaceActionHandler === undefined) {
+            global.marketplaceActionHandler = new MarketplaceActionHandler();
+        }
+        return global.marketplaceActionHandler;
+    }
     constructor() {
         this.hiddenStore = new Store({ name: 'hideconfig' });
+        this.addDialog = addDialog
+
     }
 
     handleAction(button) {
@@ -372,7 +379,7 @@ class MarketplaceActionHandler {
             'delete': () => deleteDialog(event, child, modal),
             'remove': () => removeDialog(event, child, modal),
             'hide': () => removeDialog(event, child, modal),
-            'add': () => addDialog(event, child, modal),
+            // 'add': () => addDialog(event, child, modal),
             'install': () => addDialog(event, child, modal)
         };
 
@@ -384,6 +391,7 @@ class MarketplaceActionHandler {
         }
     }
 }
+MarketplaceActionHandler.getInstance()
 
 // === DATA PROVIDER ===
 class MarketplaceDataProvider {
@@ -467,7 +475,7 @@ class Marketplace {
         this.tabs = [];
 
         this.templateManager = new TemplateManager();
-        this.actionHandler = new MarketplaceActionHandler();
+        this.actionHandler = global.marketplaceActionHandler;
         this.dataProvider = new MarketplaceDataProvider();
 
         this.help = this._createHelpConfig();
@@ -507,36 +515,45 @@ class Marketplace {
     }
 
     mergeMarkets() {
-        const menuList = store.get('main').menu.map(item => item.name);
+        // const mainMenu = store.get('main', {}).menu
+        const mainMenu = global.mMenu.main.menu
+        const menuList = mainMenu.map(item => item.name);
         const markets = store.get('market').markets;
-        const startingPoint = store.get('main').menu;
         const totalInstalled = [];
         const notInstalled = [];
         const marketToDialog = {};
+        const getDiff = (menuFromMarket) => {
+            return menuFromMarket.filter(n => {
+                if (typeof n === 'string') {
+                    return !totalInstalled.includes(n)
+                }
+                return totalInstalled.findIndex(i => i.name === n.name) === -1
+            });
+        }
 
         markets.forEach(market => {
             const provider = this.dataProvider.getProvider(market.provider);
             const marketData = provider(market);
-            const tmpPath = market.path.replace('dialogs.json', '');
+            const tmpPath = market.path.replace('dialogs.json', '')
 
             marketData.forEach(marketItem => {
-                const menuIndex = menuList.indexOf(marketItem.name);
-                const menuFromMarket = this.flattenMenu(marketItem);
+                const menuIndex = menuList.indexOf(marketItem.name)
+                const menuFromMarket = this.flattenMenu(marketItem)
 
                 if (menuIndex > -1) {
-                    const installedMenu = this.flattenMenu(startingPoint[menuIndex]);
-                    totalInstalled.push(...installedMenu);
-                    const diff = menuFromMarket.filter(n => !totalInstalled.includes(n));
-                    startingPoint[menuIndex].buttons.push(...diff);
-                    notInstalled.push(...diff);
+                    const installedMenu = this.flattenMenu(mainMenu[menuIndex])
+                    totalInstalled.push(...installedMenu)
+                    const diff = getDiff(menuFromMarket)
+                    mainMenu[menuIndex].buttons.push(...diff)
+                    notInstalled.push(...diff)
                 } else {
-                    startingPoint.push(marketItem);
-                    const diff = menuFromMarket.filter(n => !totalInstalled.includes(n));
-                    notInstalled.push(...diff);
+                    mainMenu.push(marketItem)
+                    const diff = getDiff(menuFromMarket)
+                    notInstalled.push(...diff)
                 }
 
                 menuFromMarket.forEach(menuName => {
-                    marketToDialog[menuName] = tmpPath;
+                    marketToDialog[menuName] = tmpPath
                 });
             });
         });
@@ -545,7 +562,7 @@ class Marketplace {
         const uniqueNotInstalled = [...new Set([...notInstalled, ...hiddenObjects])];
 
         return {
-            starting_point: startingPoint,
+            mainMenu: mainMenu,
             not_installed: uniqueNotInstalled,
             market_to_dialog: marketToDialog
         };
@@ -556,9 +573,12 @@ class Marketplace {
         global.dialogTree = global.dialogTree || new Set();
 
         this._resetState();
-        const { starting_point, not_installed, market_to_dialog } = this.mergeMarkets();
+        const { mainMenu, not_installed: notInstalled, market_to_dialog: marketToDialog } = this.mergeMarkets();
 
-        this._processChapters(starting_point, not_installed, market_to_dialog);
+        this.notInstalled = notInstalled;
+        this.marketToDialog = marketToDialog;
+
+        this._processChapters(mainMenu);
         const modules = this._processModules();
 
         this._writeDebugInfo();
@@ -572,14 +592,24 @@ class Marketplace {
         this.tabs = [];
     }
 
-    _processChapters(startingPoint, notInstalled, marketToDialog) {
-        const appPath = sessionStore.get("appPath", process.cwd());
-        const userDialogs = store.get("nonBaseDialogs", []);
+    get userDialogs() {
+        return store.get("nonBaseDialogs", [])
+    }
 
-        startingPoint.forEach(chapter => {
+    // set userDialogs(userDialogs) {
+    //     store.set("nonBaseDialogs", userDialogs);
+    // }
+
+    get appPath() {
+        return sessionStore.get("appPath", process.cwd());
+    }
+
+    _processChapters(mainMenu) {
+
+        mainMenu.forEach(chapter => {
             if (this._shouldProcessChapter(chapter)) {
                 this._addChapter(chapter);
-                const cards = this._processChapterButtons(chapter, notInstalled, marketToDialog, appPath, userDialogs);
+                const cards = this._processChapterButtons(chapter);
                 this._addTab(chapter, cards);
             }
         });
@@ -597,22 +627,18 @@ class Marketplace {
         this.dropitems.push(chapter.name || chapter.tab);
     }
 
-    _processChapterButtons(chapter, notInstalled, marketToDialog, appPath, userDialogs) {
+    _processChapterButtons(chapter) {
         const cards = [];
-
-        if (chapter.tab === 'dataset') {
-            debugger
-        }
 
         chapter.buttons.forEach(button => {
             if (typeof button === "object" && button.children === undefined) {
                 cards.push(this._createDialogCard(button, chapter));
             } else if (typeof button === "object" && button.children !== undefined) {
                 button.children.forEach(child => {
-                    cards.push(this._createChildDialogCard(child, chapter, notInstalled, marketToDialog));
+                    cards.push(this._createChildDialogCard(child, chapter));
                 });
             } else {
-                cards.push(this._createButtonCard(button, chapter, notInstalled, marketToDialog, appPath, userDialogs));
+                cards.push(this._createButtonCard(button, chapter));
             }
         });
 
@@ -626,8 +652,8 @@ class Marketplace {
         });
     }
 
-    _createChildDialogCard(child, chapter, notInstalled, marketToDialog) {
-        const visibility = this._calculateVisibility(child, notInstalled);
+    _createChildDialogCard(child, chapter) {
+        const visibility = this._calculateVisibility(child);
         const fixedChild = this._fixPath(child);
 
         try {
@@ -650,13 +676,18 @@ class Marketplace {
         }
     }
 
-    _createButtonCard(button, chapter, notInstalled, marketToDialog, appPath, userDialogs) {
-        const isUserDialog = this._isUserDialog(button, userDialogs, appPath, marketToDialog);
-        const visibility = this._calculateVisibility(button, notInstalled);
+    _createButtonCard(button, chapter) {
+        const isUserDialog = this._isUserDialog(button);
+        const visibility = this._calculateVisibility(button);
         const fixedButton = this._fixPath(button);
 
+        if (button.endsWith('addMovingAvgPro')) {
+            console.log('addMovingAvgPro')
+            console.log({notinstalled: this.notInstalled})
+        }
+
         try {
-            const dialog = this._getDialogSafely(button, appPath, marketToDialog);
+            const dialog = this._getDialogSafely(button);
             if (dialog) {
                 this._addToDialogTree(chapter, dialog);
 
@@ -678,10 +709,10 @@ class Marketplace {
         return '';
     }
 
-    _calculateVisibility(item, notInstalled) {
+    _calculateVisibility(item) {
         return {
-            install: notInstalled.indexOf(item) > -1 ? '' : 'hidden',
-            uninstall: notInstalled.indexOf(item) > -1 ? 'hidden' : ''
+            install: this.notInstalled.indexOf(item) > -1 ? '' : 'hidden',
+            uninstall: this.notInstalled.indexOf(item) > -1 ? 'hidden' : ''
         };
     }
 
@@ -689,19 +720,21 @@ class Marketplace {
         return (process.platform === 'win32') ? itemPath.replace(/\\/g, "\\\\") : itemPath;
     }
 
-    _isUserDialog(button, userDialogs, appPath, marketToDialog) {
+    _isUserDialog(button) {
+        const userDialogs = this.userDialogs;
+        const appPath = this.appPath;
         return userDialogs.indexOf(button) > -1 ||
             userDialogs.indexOf(path.join(appPath, button)) > -1 ||
-            (Object.keys(marketToDialog).indexOf(button) > -1 &&
-                userDialogs.indexOf(path.join(appPath, marketToDialog[button], button)) > -1) ||
+            (Object.keys(this.marketToDialog).indexOf(button) > -1 &&
+                userDialogs.indexOf(path.join(appPath, this.marketToDialog[button], button)) > -1) ||
             userDialogs.some(element => button.endsWith(path.join(element)));
     }
 
-    _getDialogSafely(button, appPath, marketToDialog) {
+    _getDialogSafely(button) {
         const attempts = [
             () => getDialog(button),
-            () => getDialog(path.join(appPath, button)),
-            () => getDialog(path.join(marketToDialog[button], button))
+            () => getDialog(path.join(this.appPath, button)),
+            () => getDialog(path.join(this.marketToDialog[button], button))
         ];
 
         for (const attempt of attempts) {
@@ -851,13 +884,13 @@ class Marketplace {
     }
 
     _selectFolder(title) {
-        const folderOptions = {
-            title: title,
-            defaultPath: sessionStore.get("HomeDir"),
-            properties: ['openDirectory', 'createDirectory', 'treatPackageAsDirectory', 'dontAddToRecent']
-        };
-
-        const selectedFolders = dialog.showOpenDialogSync(getCurrentWindow(), folderOptions);
+        const selectedFolders = dialog.showOpenDialogSync(
+            getCurrentWindow(),
+            {
+                title: title,
+                defaultPath: sessionStore.get("HomeDir"),
+                properties: ['openDirectory', 'createDirectory', 'treatPackageAsDirectory', 'dontAddToRecent'],
+            });
         return selectedFolders ? selectedFolders[0].replace("file://", "") : null;
     }
 
@@ -879,8 +912,8 @@ class Marketplace {
         try {
             const result = uploadDialog();
             if (typeof result === 'object') {
-                this._handleSuccessfulUpload(result);
                 this._updateUserDialogs(result);
+                this._handleSuccessfulUpload(result);
             }
         } catch (error) {
             console.error('Error saving dialog:', error);
@@ -891,29 +924,21 @@ class Marketplace {
     }
 
     _handleSuccessfulUpload(result) {
-        const dialog = getDialog(result['import']);
-        const template = Sqrl.Render(this.templateManager.getTemplate('card'), {
-            dialog: dialog.nav,
-            chapter: result['chapter'],
-            uninstall: 'hidden',
-            install: '',
-            update: 'hidden',
-            delete: 'hidden',
-            child: result['import'],
-            userd: true
-        });
+        const template = this._createButtonCard(result['import'], result['chapter'])
 
         $(`#market_tab_${result['tab']}`).append(template);
         $(`#market_chapter_${result['tab']}`).trigger('click');
 
         setTimeout(() => {
+            console.log('scrolling', document.getElementById(`market_tab_${result['tab']}`))
             document.getElementById(`market_tab_${result['tab']}`).scrollIntoView(false);
         }, 1000);
     }
 
     _updateUserDialogs(result) {
-        const userDialogs = store.get("nonBaseDialogs", []);
-        store.delete("nonBaseDialogs");
+        const userDialogs = this.userDialogs
+        // store.delete("nonBaseDialogs");
+        console.log('_updateUserDialogs', result)
         userDialogs.push(result['import']);
         store.set("nonBaseDialogs", userDialogs);
     }
@@ -939,9 +964,8 @@ class Marketplace {
 }
 
 // === GLOBAL ACTION HANDLER ===
-const marketplaceActionHandler = new MarketplaceActionHandler();
 global.handleMarketActionClick = (button) => {
-    marketplaceActionHandler.handleAction(button);
+    global.marketplaceActionHandler.handleAction(button);
 };
 
 // === MODULE EXPORTS ===

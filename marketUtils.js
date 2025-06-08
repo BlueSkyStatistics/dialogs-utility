@@ -1,6 +1,7 @@
 const path = require('path')
 const Store = require("electron-store");
 const fs = require("fs");
+const {dialog} = require("@electron/remote");
 const hiddenStore = new Store({name:`hideconfig`});
 
 function addDialog(ev, it, id) {
@@ -15,80 +16,97 @@ function addDialog(ev, it, id) {
         let hiddenObjects = hiddenStore.get('hiddenMenuObjects', []);
         const idx = hiddenObjects.indexOf(it)
 
-        if (hiddenObjects.includes(it)) {
+        if (idx > -1) {
             hiddenObjects.splice(idx, 1)
             hiddenStore.set('hiddenMenuObjects', hiddenObjects)
             isOlderDialog = true
         }
     }
-    mMenu.addMenuItem(it, $(ev.target).closest('.card').attr('bs-tab'), isOlderDialog);
+    const chapter = $(ev.target).closest('.card').attr('bs-tab')
+    mMenu.addMenuItem(it, chapter, isOlderDialog);
+    mMenu.reloadMarketDialog()
+    mMenu.recreateMenuObject()
 }
 
-function deleteDialog(ev, itm, id) {
+const deleteDialog = (ev, itm, id) => {
+    // todo: show confirmation dialog
+    const dialogsDir = path.dirname(itm); // Path from the card where 'delete' was clicked
+    const chapter = ev.target.closest("div > .card").getAttribute("bs-tab");
 
-    var dialogsDir = path.dirname(itm) //path will come from the card on which 'delete' was clicked.
-    let chapter = ev.target.closest("div > .card").getAttribute('bs-tab');
-    let dialogJsonDir = undefined;
-    let userDialogjson = undefined;
+    let dialogJsonDir;
+    let userDialogJson;
 
-    let markets = store.get("market", {"markets": []}).markets
-    outer: {
-        for (let j = 0; j < markets.length; j++) {
-            try {
-                // if (!regex.test(markets[j].path)) { //if (markets[j].path != `./dialogs.json`) {
-                if (!markets[j].path.endsWith('dialogs.json')) { //if (markets[j].path != `./dialogs.json`) {
-                    dialogJsonDir = path.dirname(markets[j].path)
-                    userDialogjson = JSON.parse(fs.readFileSync(path.normalize(markets[j].path)));
+    const markets = store.get("market", {markets: []}).markets;
 
-                    for (let i = 0; i < userDialogjson['menu'].length; i++) {
-                        if (userDialogjson['menu'][i]['name'] === chapter) {
-                            for (let j = 0; j < userDialogjson['menu'][i]['buttons'].length; j++) {
-                                if (userDialogjson['menu'][i]['buttons'][j].startsWith("./")) {
-                                    let abspath = path.join(dialogJsonDir, (userDialogjson['menu'][i]['buttons'][j]).replace('.', '')).replace(/\\/g, "/")
-                                    if (abspath === itm) {
-                                        userDialogjson['menu'][i]['buttons'].splice(j, 1)
-                                        break outer;
-                                    }
-                                } else if (userDialogjson['menu'][i]['buttons'][j] === itm) {
-                                    userDialogjson['menu'][i]['buttons'].splice(j, 1)
-                                    break outer;
-                                }
-                            }
-                        }
-                    }
+    // Locate and update the relevant dialogs.json
+    for (const market of markets) {
+        if (!market.path.endsWith("dialogs.json")) continue;
 
-                }
-            } catch (ex) {
-                console.log(ex.message)
+        dialogJsonDir = path.dirname(market.path);
+        userDialogJson = JSON.parse(fs.readFileSync(path.normalize(market.path)));
+
+        const menu = userDialogJson.menu.find((menuItem) => menuItem.name === chapter);
+        if (!menu) continue;
+
+        const buttonIndex = menu.buttons.findIndex((button) => {
+            if (button.startsWith("./")) {
+                const absPath = path
+                    .join(dialogJsonDir, button.replace(".", ""))
+                    .replace(/\\/g, "/");
+                return absPath === itm;
             }
+            return button === itm;
+        });
+
+        if (buttonIndex !== -1) {
+            menu.buttons.splice(buttonIndex, 1);
+            break;
         }
     }
 
-    if (dialogJsonDir !== undefined && userDialogjson !== undefined) {
-        fs.writeFileSync(path.join(dialogJsonDir, 'dialogs.json'), JSON.stringify(userDialogjson))
+    // Save updated dialogs.json if changes were made
+    if (dialogJsonDir && userDialogJson) {
+        fs.writeFileSync(
+            path.join(dialogJsonDir, "dialogs.json"),
+            JSON.stringify(userDialogJson, null, 2)
+        );
     }
-    mMenu.removeMenuItem(itm, $(ev.target).closest('div[role="tabpanel"]').attr('bs-tab'))
 
-    $(ev.target).closest(".card").remove()
+    // Remove menu item and associated DOM elements
+    // mMenu.removeMenuItem(itm, $(ev.target).closest('div[role="tabpanel"]').attr("bs-tab"));
+    $(ev.target).closest(".card").remove();
+    $(`button[data-modal='${id}']`).remove();
 
-    $(`button[data-modal='${id}']`).remove()
+    const modalElement = $(`#${id}`)[0];
+    if (modalElement) modalElement.remove();
 
-    if ($(`#${id}`)[0])
-        $(`#${id}`)[0].remove()
-    var filepath = fs.realpathSync(itm.endsWith('.js') ? itm : `${itm}.js`)
-    global.dialogCacheClear(filepath)
-    for (var i = 0; i < mMenu.main_nav.modals.length; i++) {
-        if (mMenu.main_nav.modals[i].id == id) {
-            mMenu.main_nav.modals.splice(i, 1)
-            break
-        }
+    // Clear dialog cache and remove modal from main navigation
+    const filePath = fs.realpathSync(itm.endsWith(".js") ? itm : `${itm}.js`);
+    global.dialogCacheClear(filePath);
+
+    const modalIndex = mMenu.main_nav.modals.findIndex((modal) => modal.id === id);
+    if (modalIndex !== -1) {
+        mMenu.main_nav.modals.splice(modalIndex, 1);
     }
+
+    let hiddenObjects = hiddenStore.get('hiddenMenuObjects', []);
+    const idx = hiddenObjects.indexOf(itm)
+
+    if (idx > -1) {
+        hiddenObjects.splice(idx, 1)
+        hiddenStore.set('hiddenMenuObjects', hiddenObjects)
+    }
+
+    // todo: delete from main
+
+    // Delete the file
     try {
-        fs.unlinkSync(filepath);
-
+        fs.unlinkSync(filePath);
     } catch (error) {
-        console.log(error);
+        console.error(`Error deleting file: ${error.message}`);
     }
+
+
 }
 
 function refreshDialog(ev, it, id) {
@@ -126,6 +144,8 @@ function removeDialog(ev, item, id) {
             break
         }
     }
+    mMenu.reloadMarketDialog()
+    mMenu.recreateMenuObject()
 }
 
 function searchDialog() {
@@ -135,6 +155,14 @@ function searchDialog() {
     }).parent().each((index, item) => {
         $("#searchResults").append($(item).clone())
     })
+}
+
+function checkForSearch() {
+    if ($("#seachDialog").val() && $("#seachDialog").val().length > 2) {
+        searchDialog()
+    } else {
+        $("#searchResults").children().remove()
+    }
 }
 
 function openDialogsFolder() {
@@ -207,5 +235,7 @@ module.exports = {
     refreshDialog,
     removeDialog,
     deleteDialog,
-    uploadDialog
+    uploadDialog,
+    searchDialog,
+    checkForSearch
 }
