@@ -43,11 +43,7 @@ const blankDialogs = {
             "tab": "DoE",
             "buttons": []
         },
-        {
-            "name": "Six Sigma",
-            "tab": "six_sigma",
-            "buttons": []
-        },
+
         {
             "name": "Model Fitting",
             "tab": "model_fitting",
