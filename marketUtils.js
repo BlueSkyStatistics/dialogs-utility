@@ -135,7 +135,7 @@ function removeDialog(ev, item, id) {
     })
     $(`button[data-modal='${id}']`).remove()
     $(`button[onclick='r_before_modal("${id}")']`).remove()
-    $(`#${id}`)[0].remove()
+    $(`#${id}`).remove()
     var filepat = fs.realpathSync(item.endsWith('.js') ? item : `${item}.js`)
     global.dialogCacheClear(filepat)
     for (var i = 0; i < mMenu.main_nav.modals.length; i++) {
