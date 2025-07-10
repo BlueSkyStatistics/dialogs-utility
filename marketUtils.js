@@ -4,7 +4,7 @@ const fs = require("fs");
 const {dialog} = require("@electron/remote");
 const hiddenStore = new Store({name:`hideconfig`});
 
-function addDialog(ev, it, id) {
+function addDialog(ev, it, id, chapterOverride) {
     const filePath = path.normalize(fs.realpathSync(require.resolve(it)))
     global.dialogCacheClear(filePath)
 
@@ -22,7 +22,7 @@ function addDialog(ev, it, id) {
             isOlderDialog = true
         }
     }
-    const chapter = $(ev.target).closest('.card').attr('bs-tab')
+    const chapter = chapterOverride || $(ev.target).closest('.card').attr('bs-tab')
     mMenu.addMenuItem(it, chapter, isOlderDialog);
     mMenu.reloadMarketDialog()
     mMenu.recreateMenuObject()
@@ -123,8 +123,8 @@ function refreshDialog(ev, it, id) {
     addDialog(ev, it)
 }
 
-function removeDialog(ev, item, id) {
-    mMenu.removeMenuItem(item, $(ev.target).closest('.card').attr('bs-tab'))
+function removeDialog(ev, item, id, chapterOverride) {
+    mMenu.removeMenuItem(item, chapterOverride || $(ev.target).closest('.card').attr('bs-tab'))
     let attrval = (process.platform === 'win32') ? $(ev.target).attr("onclick").replace(/\\/g, "\\\\") : $(ev.target).attr("onclick")
     $("#marketplace .card").find(`button[onclick="${attrval}"]`).each((index, item) => {
         item
@@ -186,7 +186,7 @@ function uploadDialog() {
     try {
         var dialogId = dialogCode.match(/id\:( )?(\"||\')([a-z,A-Z,_0-9]*)(\"||\')/g)[0].split(":")[1].trim().replace(/"/g, '').replace(/'/g, '')
     } catch {
-        dialog.showErrorBox("Dialog Error", "Ingestred dialog do not contain dialog ID")
+        dialog.showErrorBox("Dialog Error", "Dialog do not contain dialog ID")
         return 1
     }
     if ($(`#${dialogId}`).length > 0) {

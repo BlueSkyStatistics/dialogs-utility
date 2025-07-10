@@ -41,6 +41,7 @@ const DEFAULT_MENU_STRUCTURE = {
     ]
 };
 
+
 // === TEMPLATE MANAGER ===
 class TemplateManager {
     constructor() {
@@ -49,6 +50,8 @@ class TemplateManager {
             chapter: this._getChapterTemplate(),
             tab: this._getTabTemplate(),
             card: this._getCardTemplate(),
+            userDialogCard: this._getUserDialogCardTemplate(),
+            baseDialogCard: this._getBaseDialogCardTemplate(),
             moduleCard: this._getModuleCardTemplate()
         };
     }
@@ -80,6 +83,9 @@ class TemplateManager {
                     <button type="button" action="help" class="close btn-tooltip mr-0 enable-tooltip" id="{{modal.id}}Help"
                     data-toggle="tooltip" title="Help on dialog">
                         <i class="fas fa-question"></i>
+                    </button>
+                    <button type="button" class="close btn-tooltip mr-0 enable-tooltip" id="custom-dialogs-refresh-btn" data-toggle="tooltip" title="Refresh custom dialogs">
+                        <i class="fas fa-sync-alt"></i>
                     </button>
                 </div>
             </div>
@@ -164,18 +170,6 @@ class TemplateManager {
                     <label class="form-label mt-3 mr-2 small">Dialogs Location:</label>
                     <button type="button" class="btn btn-upload btn-path" id="{{modal.id}}DialogLocation" onclick="openDialogsFolder()"></button>
                 </div>
-            </div>
-        </div>
-        <div class="row mt-1">
-            <div class="col-6">
-                <select class="form-select mt-1 mr-1" id="addDialogsChapter" aria-label="Default select example">
-                    {{each(options.dropitems)}}
-                        <option value="{{@this | safe}}">{{@this | safe}}</option>
-                    {{/each}}
-                </select>
-            </div>
-            <div class="col-6">
-                <span>Chapter dialogs will be added to </span>
             </div>
         </div>
         <div class="row mt-1">
@@ -285,35 +279,103 @@ class TemplateManager {
                     </div>
                     <div class="col-4">
                         {{if(options.userd)}}
-                            <button type="button" class="btn btn-sm btn-outline-warning btn-refresh float-right {{if(options.uninstall=="hidden")}} hidden{{/if}}"
+                            <button type="button" class="btn btn-sm btn-outline-warning btn-refresh float-right {{if(options.uninstall==\"hidden\")}} hidden{{/if}}"
                                 data-child="{{child}}" data-modal="{{if(options.dialog.modal)}}{{dialog.modal}}{{#else}}{{dialog.modal_id}}{{/if}}" 
+                                data-file="{{child}}" data-section="{{chapter}}"
                                 data-action="reload" 
-                                onclick="handleMarketActionClick(this)"
-                            >
+                                onclick="handleMarketActionClick(this)">
                                     Reload Dialog
                             </button>
                             <button type="button" 
                                 class="btn btn-sm btn-outline-danger float-right" 
                                 data-child="{{child}}" data-modal="{{dialog.modal}}"
+                                data-file="{{child}}" data-section="{{chapter}}"
                                 data-action="delete" 
-                                onclick="handleMarketActionClick(this)"
-                            >
+                                onclick="handleMarketActionClick(this)">
                                 Delete
                             </button>
+                            <button type="button" 
+                                class="btn btn-sm btn-outline-danger float-right {{if(options.uninstall==\"hidden\")}} hidden{{/if}}" 
+                                data-child="{{child}}" data-modal="{{if(options.dialog.modal)}}{{dialog.modal}}{{#else}}{{dialog.modal_id}}{{/if}}"
+                                data-file="{{child}}" data-section="{{chapter}}"
+                                data-action="uninstall" onclick="handleMarketActionClick(this)">
+                                Uninstall
+                            </button>
+                            <button type="button" 
+                                class="btn btn-sm btn-outline-primary float-right {{if(options.install==\"hidden\")}} hidden{{/if}}"
+                                data-child="{{child}}" data-modal="{{if(options.dialog.modal)}}{{dialog.modal}}{{#else}}{{dialog.modal_id}}{{/if}}"
+                                data-file="{{child}}" data-section="{{chapter}}"
+                                onclick="global.marketplaceActionHandler.addDialog(event, '{{child}}', '{{if(options.dialog.modal)}}{{dialog.modal}}{{#else}}{{dialog.modal_id}}{{/if}}', '{{chapter}}')">
+                                Install
+                            </button>
+                        {{#else}}
+                            <button type="button" class="btn btn-sm btn-outline-secondary float-right {{if(options.hidden)}} hidden{{/if}}" data-child="{{child}}" data-modal="{{if(options.dialog.modal)}}{{dialog.modal}}{{#else}}{{dialog.modal_id}}{{/if}}" data-action="hide" onclick="handleMarketActionClick(this)">Hide</button>
+                            <button type="button" class="btn btn-sm btn-outline-success float-right {{if(options.hidden)}}{{else}} hidden{{/if}}" data-child="{{child}}" data-modal="{{if(options.dialog.modal)}}{{dialog.modal}}{{#else}}{{dialog.modal_id}}{{/if}}" data-action="show" onclick="handleMarketActionClick(this)">Show</button>
                         {{/if}}
-                        <button type="button" 
-                            class="btn btn-sm btn-outline-danger float-right {{if(options.uninstall=="hidden")}} hidden{{/if}}" 
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                {{if(options.dialog.description)}}{{ dialog.description | safe }}{{/if}}
+            </div>
+        </div>`;
+    }
+
+    _getUserDialogCardTemplate() {
+        return `<div class="card" bs-tab="{{chapter}}">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col-8 title">
+                        <div class="d-flex">
+                            <div class="d-inline-flex"><h6>{{dialog.name}}</h6></div>
+                            <div class="d-inline-flex ml-2">
+                                <div class="bg-success rounded-pill pl-3 pr-3" style="height: 20px;">User Dialog</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <button type="button" class="btn btn-sm btn-outline-warning btn-refresh float-right {{if(options.uninstall==\"hidden\")}} hidden{{/if}}"
                             data-child="{{child}}" data-modal="{{if(options.dialog.modal)}}{{dialog.modal}}{{#else}}{{dialog.modal_id}}{{/if}}"
-                            data-action="hide" onclick="handleMarketActionClick(this)"
-                        >
-                            Hide
-                        </button>
-                        <button type="button" 
-                            class="btn btn-sm btn-outline-primary float-right {{if(options.install=="hidden")}} hidden{{/if}}"
-                            onclick="global.marketplaceActionHandler.addDialog(event, '{{child}}', '{{if(options.dialog.modal)}}{{dialog.modal}}{{#else}}{{dialog.modal_id}}{{/if}}')"
-                        >
-                            Install
-                        </button>
+                            data-file="{{child}}" data-section="{{chapter}}"
+                            data-action="reload" 
+                            onclick="handleMarketActionClick(this)">Reload Dialog</button>
+                        <button type="button" class="btn btn-sm btn-outline-danger float-right" 
+                            data-child="{{child}}" data-modal="{{dialog.modal}}"
+                            data-file="{{child}}" data-section="{{chapter}}"
+                            data-action="delete" 
+                            onclick="handleMarketActionClick(this)">Delete</button>
+                        <button type="button" class="btn btn-sm btn-outline-danger float-right {{if(options.uninstall==\"hidden\")}} hidden{{/if}}" 
+                            data-child="{{child}}" data-modal="{{if(options.dialog.modal)}}{{dialog.modal}}{{#else}}{{dialog.modal_id}}{{/if}}"
+                            data-file="{{child}}" data-section="{{chapter}}"
+                            data-action="uninstall" onclick="handleMarketActionClick(this)">Uninstall</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary float-right {{if(options.install==\"hidden\")}} hidden{{/if}}"
+                            data-child="{{child}}" data-modal="{{if(options.dialog.modal)}}{{dialog.modal}}{{#else}}{{dialog.modal_id}}{{/if}}"
+                            data-file="{{child}}" data-section="{{chapter}}"
+                            onclick="global.marketplaceActionHandler.addDialog(event, '{{child}}', '{{if(options.dialog.modal)}}{{dialog.modal}}{{#else}}{{dialog.modal_id}}{{/if}}', '{{chapter}}')">Install</button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                {{if(options.dialog.description)}}{{ dialog.description | safe }}{{/if}}
+            </div>
+        </div>`;
+    }
+
+    _getBaseDialogCardTemplate() {
+        return `<div class="card" bs-tab="{{chapter}}">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col-8 title">
+                        <div class="d-flex">
+                            <div class="d-inline-flex"><h6>{{dialog.name}}</h6></div>
+                            <div class="d-inline-flex ml-2">
+                                <div class="bg-primary rounded-pill pl-3 pr-3" style="height: 20px;">Base dialog</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <button type="button" class="btn btn-sm btn-outline-secondary float-right {{if(options.hidden)}} hidden{{/if}}" data-child="{{child}}" data-modal="{{if(options.dialog.modal)}}{{dialog.modal}}{{#else}}{{dialog.modal_id}}{{/if}}" data-action="hide" onclick="handleMarketActionClick(this)">Hide</button>
+                        <button type="button" class="btn btn-sm btn-outline-success float-right {{if(options.hidden)}}{{else}} hidden{{/if}}" data-child="{{child}}" data-modal="{{if(options.dialog.modal)}}{{dialog.modal}}{{#else}}{{dialog.modal_id}}{{/if}}" data-action="show" onclick="handleMarketActionClick(this)">Show</button>
                     </div>
                 </div>
             </div>
@@ -364,30 +426,242 @@ class MarketplaceActionHandler {
     }
     constructor() {
         this.hiddenStore = new Store({ name: 'hideconfig' });
-        this.addDialog = addDialog
+        this.addDialog = addDialog;
+        this.marketplace = global?.mp;
+    }
 
+    // Helper to determine if a dialog is a user/custom dialog
+    _isUserDialog(fileOrButton) {
+        const userDialogs = store.get("nonBaseDialogs", []);
+        let btnPath = fileOrButton;
+        if (!btnPath.endsWith('.js')) btnPath += '.js';
+        btnPath = path.resolve(path.normalize(btnPath));
+        return userDialogs.some(ud => {
+            let udPath = ud;
+            if (!udPath.endsWith('.js')) udPath += '.js';
+            udPath = path.resolve(path.normalize(udPath));
+            return btnPath === udPath;
+        });
     }
 
     handleAction(button) {
         const action = button.getAttribute('data-action');
         const child = button.getAttribute('data-child');
         const modal = button.getAttribute('data-modal');
+        const file = button.getAttribute('data-file');
+        const section = button.getAttribute('data-section');
 
-        const actionMap = {
-            'refresh': () => refreshDialog(event, child, modal),
-            'reload': () => refreshDialog(event, child, modal),
-            'delete': () => deleteDialog(event, child, modal),
-            'remove': () => removeDialog(event, child, modal),
-            'hide': () => removeDialog(event, child, modal),
-            // 'add': () => addDialog(event, child, modal),
-            'install': () => addDialog(event, child, modal)
-        };
+        // Determine dialog type
+        const isUserDialog = file ? this._isUserDialog(file) : (child ? this._isUserDialog(child) : false);
 
-        const handler = actionMap[action];
-        if (handler) {
-            handler();
+        // --- Custom/User Dialog Actions ---
+        if (isUserDialog) {
+            switch (action) {
+                case 'install':
+                    this.showInstallDropdown(button, file);
+                    return;
+                case 'uninstall':
+                    this.uninstallCustomDialog(file, section);
+                    return;
+                case 'delete':
+                    this.deleteCustomDialog(file);
+                    return;
+                case 'reload':
+                    this.reloadCustomDialog(file);
+                    return;
+                default:
+                    console.error('Unknown action for user dialog:', action);
+                    return;
+            }
+        }
+
+        // --- Base Dialog Actions ---
+        switch (action) {
+            case 'hide': {
+                let hiddenObjects = this.hiddenStore.get('hiddenMenuObjects', []);
+                if (!hiddenObjects.includes(child)) {
+                    hiddenObjects.push(child);
+                    this.hiddenStore.set('hiddenMenuObjects', hiddenObjects);
+                }
+                mMenu.reloadMarketDialog();
+                mMenu.recreateMenuObject();
+                return;
+            }
+            case 'show': {
+                let hiddenObjects = this.hiddenStore.get('hiddenMenuObjects', []);
+                const idx = hiddenObjects.indexOf(child);
+                if (idx > -1) {
+                    hiddenObjects.splice(idx, 1);
+                    this.hiddenStore.set('hiddenMenuObjects', hiddenObjects);
+                }
+                mMenu.reloadMarketDialog();
+                mMenu.recreateMenuObject();
+                return;
+            }
+            default:
+                // For any other action, log error (base dialogs should not have install/uninstall/delete/reload)
+                console.error('Unknown or invalid action for base dialog:', action);
+                return;
+        }
+    }
+
+    showInstallDropdown(button, file) {
+        // Find the card header
+        const cardHeader = button.closest('.card-header');
+        if (!cardHeader) return;
+        // Remove any existing dropdowns
+        $(cardHeader).find('.custom-dialog-install-dropdown').remove();
+        // Get chapters
+        let dialogsJson;
+        try {
+            dialogsJson = JSON.parse(fs.readFileSync(path.normalize(mMenu.getUserDialogsPath())));
+        } catch (e) {
+            dialog.showErrorBox('Error', 'Could not read dialogs.json');
+            return;
+        }
+        const chapters = dialogsJson.menu.map(m => m.name);
+        // Build dropdown HTML
+        const dropdownId = 'custom-dialog-chapter-select-' + Math.random().toString(36).substr(2, 9);
+        const dropdownHtml = `
+            <div class="custom-dialog-install-dropdown d-inline-flex align-items-center ml-2">
+                <select class="form-select form-select-sm" id="${dropdownId}">
+                    ${chapters.map(ch => `<option value="${ch}">${ch}</option>`).join('')}
+                </select>
+                <button type="button" class="btn btn-sm btn-success ml-2" data-file="${file}" data-dropdown="${dropdownId}" data-action="confirm-install">Confirm</button>
+                <button type="button" class="btn btn-sm btn-secondary ml-2" data-file="${file}" data-action="cancel-install">Cancel</button>
+            </div>
+        `;
+        // Hide the Install button and insert dropdown
+        $(button).hide();
+        $(cardHeader).find('.col-4').append(dropdownHtml);
+        // Attach handlers
+        $(cardHeader).find('[data-action="confirm-install"]').on('click', (e) => {
+            const selectedChapter = $(cardHeader).find(`#${dropdownId}`).val();
+            this.installCustomDialog(file, selectedChapter, button, cardHeader);
+        });
+        $(cardHeader).find('[data-action="cancel-install"]').on('click', (e) => {
+            this.cancelInstallDropdown(button, cardHeader);
+        });
+    }
+
+    cancelInstallDropdown(button, cardHeader) {
+        $(cardHeader).find('.custom-dialog-install-dropdown').remove();
+        $(button).show();
+    }
+
+    installCustomDialog(file, chapter, button, cardHeader) {
+        if (!chapter) return;
+        let dialogsJson;
+        try {
+            dialogsJson = JSON.parse(fs.readFileSync(path.normalize(mMenu.getUserDialogsPath())));
+        } catch (e) {
+            dialog.showErrorBox('Error', 'Could not read dialogs.json');
+            return;
+        }
+        const section = dialogsJson.menu.find(m => m.name === chapter);
+        if (!section) {
+            dialog.showErrorBox('Error', 'Section not found');
+            return;
+        }
+        // Normalize file path to absolute with .js extension
+        let absFile = path.normalize(file);
+        if (!absFile.endsWith('.js')) absFile += '.js';
+        absFile = path.resolve(absFile);
+        // Add dialog if not already present
+        if (!section.buttons.some(btn => path.resolve(path.isAbsolute(btn) ? btn.endsWith('.js') ? btn : btn + '.js' : path.join(path.dirname(mMenu.getUserDialogsPath()), path.basename(btn.endsWith('.js') ? btn : btn + '.js'))) === absFile)) {
+            section.buttons.push(absFile);
+            fs.writeFileSync(path.normalize(mMenu.getUserDialogsPath()), JSON.stringify(dialogsJson, null, 2));
+            dialog.showMessageBoxSync({ message: 'Dialog installed in ' + chapter });
+            // Also add to menu/UI immediately
+            try {
+                // Fake a minimal event for addDialog
+                const fakeEvent = { target: cardHeader || button };
+                addDialog(fakeEvent, absFile, undefined, chapter);
+            } catch (e) {
+                console.error('Error calling addDialog after install:', e);
+            }
+            // --- Update nonBaseDialogs so _isUserDialog works immediately ---
+            let userDialogs = store.get("nonBaseDialogs", []);
+            if (!userDialogs.includes(absFile)) {
+                userDialogs.push(absFile);
+                store.set("nonBaseDialogs", userDialogs);
+            }
+            mMenu.reloadMarketDialog();
+            mMenu.recreateMenuObject();
         } else {
-            console.error('Unknown action:', action);
+            dialog.showMessageBoxSync({ message: 'Dialog already installed in ' + chapter });
+        }
+    }
+
+    uninstallCustomDialog(file, sectionName) {
+        let dialogsJson;
+        try {
+            dialogsJson = JSON.parse(fs.readFileSync(path.normalize(mMenu.getUserDialogsPath())));
+        } catch (e) {
+            dialog.showErrorBox('Error', 'Could not read dialogs.json');
+            return;
+        }
+        // Normalize file path to absolute with .js extension
+        let absFile = path.normalize(file);
+        if (!absFile.endsWith('.js')) absFile += '.js';
+        absFile = path.resolve(absFile);
+        let changed = false;
+        dialogsJson.menu.forEach(section => {
+            if (sectionName && section.name !== sectionName) return;
+            // Remove all entries that match the normalized path
+            const origLen = section.buttons.length;
+            section.buttons = section.buttons.filter(btn => {
+                let btnPath = path.isAbsolute(btn) ? btn : path.join(path.dirname(mMenu.getUserDialogsPath()), path.basename(btn));
+                if (!btnPath.endsWith('.js')) btnPath += '.js';
+                btnPath = path.resolve(btnPath);
+                return btnPath !== absFile;
+            });
+            if (section.buttons.length !== origLen) changed = true;
+        });
+        if (changed) {
+            fs.writeFileSync(path.normalize(mMenu.getUserDialogsPath()), JSON.stringify(dialogsJson, null, 2));
+            dialog.showMessageBoxSync({ message: 'Dialog uninstalled' });
+            // Also remove from menu/UI immediately
+            try {
+                // Find the card in the DOM for event context
+                const card = document.querySelector(`.card-header [data-file='${file}']`);
+                const fakeEvent = { target: card };
+                removeDialog(fakeEvent, absFile, undefined, sectionName);
+            } catch (e) {
+                console.error('Error calling removeDialog after uninstall:', e);
+            }
+            mMenu.reloadMarketDialog();
+            mMenu.recreateMenuObject();
+        } else {
+            console.debug('Dialog was not installed')
+        }
+    }
+
+    deleteCustomDialog(file) {
+        // Uninstall from all sections (suppress message)
+        try {
+            this.uninstallCustomDialog(file);
+        } catch (e) { /* ignore uninstall message */ }
+        // Delete file
+        try {
+            fs.unlinkSync(file);
+            dialog.showMessageBoxSync({ message: 'Dialog file deleted' });
+        } catch (e) {
+            dialog.showErrorBox('Error', 'Could not delete file: ' + e.message);
+        }
+        if (this.marketplace && typeof this.marketplace.reloadCustomDialogsTab === 'function') {
+            this.marketplace.reloadCustomDialogsTab();
+        }
+    }
+
+    reloadCustomDialog(file) {
+        try {
+            delete require.cache[require.resolve(file)];
+            dialog.showMessageBoxSync({ message: 'Dialog reloaded' });
+            mMenu.reloadMarketDialog();
+            mMenu.recreateMenuObject();
+        } catch (e) {
+            dialog.showErrorBox('Error', 'Could not reload dialog: ' + e.message);
         }
     }
 }
@@ -476,9 +750,11 @@ class Marketplace {
 
         this.templateManager = new TemplateManager();
         this.actionHandler = global.marketplaceActionHandler;
+        this.actionHandler.marketplace = this;
         this.dataProvider = new MarketplaceDataProvider();
 
         this.help = this._createHelpConfig();
+        this.customDialogs = this._scanCustomDialogs();
     }
 
     _createHelpConfig() {
@@ -580,7 +856,7 @@ class Marketplace {
 
         this._processChapters(mainMenu);
         const modules = this._processModules();
-
+        this._addCustomDialogsTab();
         this._writeDebugInfo();
 
         return this._renderFinalTemplate(modules);
@@ -655,20 +931,15 @@ class Marketplace {
     _createChildDialogCard(child, chapter) {
         const visibility = this._calculateVisibility(child);
         const fixedChild = this._fixPath(child);
-
         try {
             const dialog = getDialog(child);
             this._addToDialogTree(chapter, dialog);
-
             return Sqrl.Render(this.templateManager.getTemplate('card'), {
                 dialog: dialog.nav,
                 chapter: chapter.name,
                 uninstall: visibility.uninstall,
                 install: visibility.install,
-                update: 'hidden',
-                delete: 'hidden',
-                child: fixedChild,
-                userd: false
+                child: fixedChild
             });
         } catch (error) {
             console.error('Error creating child dialog card:', error);
@@ -677,35 +948,38 @@ class Marketplace {
     }
 
     _createButtonCard(button, chapter) {
-        const isUserDialog = this._isUserDialog(button);
+        const isUserDialog = this.actionHandler._isUserDialog(button);
         const visibility = this._calculateVisibility(button);
         const fixedButton = this._fixPath(button);
-
-        if (button.endsWith('addMovingAvgPro')) {
-            console.log('addMovingAvgPro')
-            console.log({notinstalled: this.notInstalled})
+        let isHidden = false;
+        if (!isUserDialog) {
+            // Check if hidden in hiddenStore
+            const hiddenObjects = this.actionHandler.hiddenStore.get('hiddenMenuObjects', []);
+            isHidden = hiddenObjects.includes(button);
         }
-
         try {
             const dialog = this._getDialogSafely(button);
             if (dialog) {
                 this._addToDialogTree(chapter, dialog);
-
-                return Sqrl.Render(this.templateManager.getTemplate('card'), {
+                const templateName = isUserDialog ? 'userDialogCard' : 'baseDialogCard';
+                // Only pass needed options for the template
+                const options = {
                     dialog: dialog.nav,
                     chapter: chapter.name,
-                    uninstall: visibility.uninstall,
-                    install: visibility.install,
-                    update: 'hidden',
-                    delete: 'hidden',
-                    child: fixedButton,
-                    userd: isUserDialog
-                });
+                    child: fixedButton
+                };
+                if (isUserDialog) {
+                    options.uninstall = visibility.uninstall;
+                    options.install = visibility.install;
+                    options.userd = true;
+                } else {
+                    options.hidden = isHidden;
+                }
+                return Sqrl.Render(this.templateManager.getTemplate(templateName), options);
             }
         } catch (error) {
             console.error('Error creating button card:', error);
         }
-
         return '';
     }
 
@@ -718,16 +992,6 @@ class Marketplace {
 
     _fixPath(itemPath) {
         return (process.platform === 'win32') ? itemPath.replace(/\\/g, "\\\\") : itemPath;
-    }
-
-    _isUserDialog(button) {
-        const userDialogs = this.userDialogs;
-        const appPath = this.appPath;
-        return userDialogs.indexOf(button) > -1 ||
-            userDialogs.indexOf(path.join(appPath, button)) > -1 ||
-            (Object.keys(this.marketToDialog).indexOf(button) > -1 &&
-                userDialogs.indexOf(path.join(appPath, this.marketToDialog[button], button)) > -1) ||
-            userDialogs.some(element => button.endsWith(path.join(element)));
     }
 
     _getDialogSafely(button) {
@@ -923,16 +1187,49 @@ class Marketplace {
         }
     }
 
+    reloadCustomDialogsTab() {
+        this.customDialogs = this._scanCustomDialogs();
+        // --- Update nonBaseDialogs to match all custom dialog files ---
+        const allCustomDialogPaths = this.customDialogs.map(d => d.file);
+        store.set('nonBaseDialogs', allCustomDialogPaths);
+        const tabContent = document.getElementById('market_tab_custom_dialogs');
+        if (tabContent) {
+            const newCards = this.customDialogs.flatMap(dialog => {
+                if (dialog.installed) {
+                    return dialog.installedSections.map(sectionName => {
+                        const pill = `<div class=\"bg-success rounded-pill pl-3 pr-3\" style=\"height: 20px;\">${sectionName}</div>`;
+                        return `<div class=\"card\" bs-tab=\"custom_dialogs\">\n                            <div class=\"card-header\">\n                                <div class=\"row\">\n                                    <div class=\"col-8 title\">\n                                        <div class=\"d-flex\">\n                                            <div class=\"d-inline-flex\"><h6>${dialog.name}</h6></div>\n                                            <div class=\"d-inline-flex ml-2\">${pill}</div>\n                                        </div>\n                                    </div>\n                                    <div class=\"col-4\">\n                                        <button type=\"button\" class=\"btn btn-sm btn-outline-danger float-right\" data-file=\"${dialog.file}\" data-section=\"${sectionName}\" data-action=\"uninstall\" onclick=\"handleMarketActionClick(this)\">Uninstall</button>\n                                        <button type=\"button\" class=\"btn btn-sm btn-outline-warning btn-refresh float-right ml-2\" data-file=\"${dialog.file}\" data-section=\"${sectionName}\" data-action=\"reload\" onclick=\"handleMarketActionClick(this)\">Reload</button>\n                                        <button type=\"button\" class=\"btn btn-sm btn-outline-danger float-right ml-2\" data-file=\"${dialog.file}\" data-action=\"delete\" onclick=\"handleMarketActionClick(this)\"\n                                    </div>\n                                </div>\n                            </div>\n                            <div class=\"card-body\">${dialog.description}</div>\n                        </div>`;
+                    });
+                } else {
+                    return [`<div class=\"card\" bs-tab=\"custom_dialogs\">\n                        <div class=\"card-header\">\n                            <div class=\"row\">\n                                <div class=\"col-8 title\">\n                                    <div class=\"d-flex\">\n                                        <div class=\"d-inline-flex\"><h6>${dialog.name}</h6></div>\n                                    </div>\n                                </div>\n                                <div class=\"col-4\">\n                                    <button type=\"button\" class=\"btn btn-sm btn-outline-primary float-right\" data-file=\"${dialog.file}\" data-action=\"install\" onclick=\"handleMarketActionClick(this)\">Install</button>\n                                    <button type=\"button\" class=\"btn btn-sm btn-outline-danger float-right ml-2\" data-file=\"${dialog.file}\" data-action=\"delete\" onclick=\"handleMarketActionClick(this)\">Delete</button>\n                                </div>\n                            </div>\n                        </div>\n                        <div class=\"card-body\">${dialog.description}</div>\n                    </div>`];
+                }
+            });
+            tabContent.innerHTML = newCards.join('');
+        }
+    }
+
     _handleSuccessfulUpload(result) {
-        const template = this._createButtonCard(result['import'], result['chapter'])
-
-        $(`#market_tab_${result['tab']}`).append(template);
-        $(`#market_chapter_${result['tab']}`).trigger('click');
-
+        // After upload, switch to Custom Dialogs tab and scroll to the uploaded dialog
+        const customTab = document.getElementById('market_chapter_custom_dialogs');
+        if (customTab) {
+            customTab.click();
+        }
+        this.reloadCustomDialogsTab();
+        // Wait for the tab content to render, then scroll to the uploaded dialog card
         setTimeout(() => {
-            console.log('scrolling', document.getElementById(`market_tab_${result['tab']}`))
-            document.getElementById(`market_tab_${result['tab']}`).scrollIntoView(false);
-        }, 1000);
+            // Try to find the card by dialog id or name
+            const dialogName = result && result.import ? result.import.split('/').pop().replace('.js', '') : '';
+            const cards = document.querySelectorAll('#market_tab_custom_dialogs .card');
+            for (const card of cards) {
+                const h6 = card.querySelector('h6');
+                if (h6 && h6.textContent && dialogName && h6.textContent.toLowerCase().includes(dialogName.toLowerCase())) {
+                    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    card.classList.add('border-primary');
+                    setTimeout(() => card.classList.remove('border-primary'), 2000);
+                    break;
+                }
+            }
+        }, 300);
     }
 
     _updateUserDialogs(result) {
@@ -960,6 +1257,109 @@ class Marketplace {
             },
             template: this.templateManager.getTemplate('card')
         };
+    }
+
+    _scanCustomDialogs() {
+        // Scan custom_dialogs folder for .js files
+        let dialogFiles = [];
+        try {
+            dialogFiles = fs.readdirSync(path.dirname(mMenu.getUserDialogsPath()))
+                .filter(f => f.endsWith('.js'))
+                .map(f => path.normalize(path.join(path.dirname(mMenu.getUserDialogsPath()), f)));
+        } catch (e) {
+            return [];
+        }
+        // Read installed dialogs from dialogs.json
+        let installedMap = new Map(); // file -> [sectionName, ...]
+        let dialogsJson = null;
+        try {
+            dialogsJson = JSON.parse(fs.readFileSync(path.normalize(mMenu.getUserDialogsPath())));
+            dialogsJson.menu.forEach(section => {
+                section.buttons.forEach(btn => {
+                    let btnPath = path.isAbsolute(btn) ? btn : path.join(path.dirname(mMenu.getUserDialogsPath()), path.basename(btn));
+                    if (!btnPath.endsWith('.js')) btnPath += '.js';
+                    btnPath = path.resolve(path.normalize(btnPath));
+                    if (!installedMap.has(btnPath)) installedMap.set(btnPath, []);
+                    installedMap.get(btnPath).push(section.name);
+                });
+            });
+        } catch (e) {}
+        // For each .js file, extract metadata and install status
+        return dialogFiles.map(file => {
+            let absFile = path.resolve(path.normalize(file));
+            let meta = { id: path.basename(file, '.js'), name: path.basename(file, '.js'), description: '', file: absFile };
+            try {
+                const dialogModule = require(absFile);
+                if (dialogModule && dialogModule.item && dialogModule.item.nav) {
+                    meta.name = dialogModule.item.nav.name || meta.name;
+                    meta.description = dialogModule.item.nav.description || '';
+                }
+            } catch (e) {}
+            meta.installedSections = installedMap.get(absFile) || [];
+            meta.installed = meta.installedSections.length > 0;
+            return meta;
+        });
+    }
+
+    _addCustomDialogsTab() {
+        // Add nav link
+        this.chapters.push('<a class="nav-link" id="market_chapter_custom_dialogs" data-toggle="pill" href="#market_tab_custom_dialogs" role="tab" aria-controls="market_tab_custom_dialogs" aria-selected="false">Custom Dialogs</a>');
+        this.dropitems.push('Custom Dialogs');
+        // Render cards for each custom dialog
+        const cards = this.customDialogs.flatMap(dialog => {
+            if (dialog.installed) {
+                // One card per installed section
+                return dialog.installedSections.map(sectionName => {
+                    const pill = `<div class=\"bg-success rounded-pill pl-3 pr-3\" style=\"height: 20px;\">${sectionName}</div>`;
+                    return `<div class=\"card\" bs-tab=\"custom_dialogs\">
+                        <div class=\"card-header\">
+                            <div class=\"row\">
+                                <div class=\"col-8 title\">
+                                    <div class=\"d-flex\">
+                                        <div class=\"d-inline-flex\"><h6>${dialog.name}</h6></div>
+                                        <div class=\"d-inline-flex ml-2\">${pill}</div>
+                                    </div>
+                                </div>
+                                <div class=\"col-4\">
+                                    <button type=\"button\" class=\"btn btn-sm btn-outline-danger float-right\" data-file=\"${dialog.file}\" data-section=\"${sectionName}\" data-action=\"uninstall\" onclick=\"handleMarketActionClick(this)\">Uninstall</button>
+                                    <button type=\"button\" class=\"btn btn-sm btn-outline-warning btn-refresh float-right ml-2\" data-file=\"${dialog.file}\" data-section=\"${sectionName}\" data-action=\"reload\" onclick=\"handleMarketActionClick(this)\">Reload</button>
+                                    <button type=\"button\" class=\"btn btn-sm btn-outline-danger float-right ml-2\" data-file=\"${dialog.file}\" data-action=\"delete\" onclick=\"handleMarketActionClick(this)\">Delete</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class=\"card-body\">${dialog.description}</div>
+                    </div>`;
+                });
+            } else {
+                // Not installed: single card with Install button
+                return [`<div class=\"card\" bs-tab=\"custom_dialogs\">
+                    <div class=\"card-header\">
+                        <div class=\"row\">
+                            <div class=\"col-8 title\">
+                                <div class=\"d-flex\">
+                                    <div class=\"d-inline-flex\"><h6>${dialog.name}</h6></div>
+                                </div>
+                            </div>
+                            <div class=\"col-4\">
+                                <button type=\"button\" class=\"btn btn-sm btn-outline-primary float-right\" data-file=\"${dialog.file}\" data-action=\"install\" onclick=\"handleMarketActionClick(this)\">Install</button>
+                                <button type=\"button\" class=\"btn btn-sm btn-outline-danger float-right ml-2\" data-file=\"${dialog.file}\" data-action=\"delete\" onclick=\"handleMarketActionClick(this)\">Delete</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class=\"card-body\">${dialog.description}</div>
+                </div>`];
+            }
+        });
+        this.tabs.push(`<div class=\"tab-pane fade\" id=\"market_tab_custom_dialogs\" role=\"tabpanel\" bs-tab=\"custom_dialogs\" aria-labelledby=\"market_chapter_custom_dialogs\">${cards.join('')}</div>`);
+        // Attach refresh handler after DOM is updated
+        setTimeout(() => {
+            const btn = document.getElementById('custom-dialogs-refresh-btn');
+            if (btn) {
+                btn.onclick = () => {
+                    this.reloadCustomDialogsTab();
+                };
+            }
+        }, 0);
     }
 }
 
