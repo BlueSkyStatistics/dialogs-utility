@@ -657,9 +657,10 @@ class MarketplaceActionHandler {
     reloadCustomDialog(file) {
         try {
             delete require.cache[require.resolve(file)];
-            dialog.showMessageBoxSync({ message: 'Dialog reloaded' });
+            global.dialogCacheClear()
             global?.mMenu?.reloadMarketDialog();
             global?.mMenu?.recreateMenuObject();
+            dialog.showMessageBoxSync({ message: 'Dialog reloaded' });            
         } catch (e) {
             dialog.showErrorBox('Error', 'Could not reload dialog: ' + e.message);
         }
