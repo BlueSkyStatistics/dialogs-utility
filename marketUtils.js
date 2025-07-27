@@ -144,8 +144,8 @@ function removeDialog(ev, item, id, chapterOverride) {
             break
         }
     }
-    mMenu.reloadMarketDialog()
-    mMenu.recreateMenuObject()
+    global?.mMenu?.reloadMarketDialog()
+    global?.mMenu?.recreateMenuObject()
 }
 
 function searchDialog() {

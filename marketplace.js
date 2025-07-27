@@ -483,8 +483,8 @@ class MarketplaceActionHandler {
                     hiddenObjects.push(child);
                     this.hiddenStore.set('hiddenMenuObjects', hiddenObjects);
                 }
-                mMenu.reloadMarketDialog();
-                mMenu.recreateMenuObject();
+                global?.mMenu?.reloadMarketDialog();
+                global?.mMenu?.recreateMenuObject();
                 return;
             }
             case 'show': {
@@ -494,8 +494,8 @@ class MarketplaceActionHandler {
                     hiddenObjects.splice(idx, 1);
                     this.hiddenStore.set('hiddenMenuObjects', hiddenObjects);
                 }
-                mMenu.reloadMarketDialog();
-                mMenu.recreateMenuObject();
+                global?.mMenu?.reloadMarketDialog();
+                global?.mMenu?.recreateMenuObject();
                 return;
             }
             default:
@@ -586,8 +586,8 @@ class MarketplaceActionHandler {
                 userDialogs.push(absFile);
                 store.set("nonBaseDialogs", userDialogs);
             }
-            mMenu.reloadMarketDialog();
-            mMenu.recreateMenuObject();
+            global?.mMenu?.reloadMarketDialog();
+            global?.mMenu?.recreateMenuObject();
         } else {
             dialog.showMessageBoxSync({ message: 'Dialog already installed in ' + chapter });
         }
@@ -630,8 +630,8 @@ class MarketplaceActionHandler {
             } catch (e) {
                 console.error('Error calling removeDialog after uninstall:', e);
             }
-            mMenu.reloadMarketDialog();
-            mMenu.recreateMenuObject();
+            global?.mMenu?.reloadMarketDialog();
+            global?.mMenu?.recreateMenuObject();
         } else {
             console.debug('Dialog was not installed')
         }
@@ -658,8 +658,8 @@ class MarketplaceActionHandler {
         try {
             delete require.cache[require.resolve(file)];
             dialog.showMessageBoxSync({ message: 'Dialog reloaded' });
-            mMenu.reloadMarketDialog();
-            mMenu.recreateMenuObject();
+            global?.mMenu?.reloadMarketDialog();
+            global?.mMenu?.recreateMenuObject();
         } catch (e) {
             dialog.showErrorBox('Error', 'Could not reload dialog: ' + e.message);
         }
