@@ -12,7 +12,6 @@ const nav = () => ({
     "buttons": [
         "./loadDatasetFromPackage",
         "./marketplace",
-        "./marketplacemsg"
     ]
 })
 

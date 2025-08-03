@@ -7,7 +7,7 @@
 const Sqrl = require('squirrelly');
 const path = require('path');
 const fs = require('fs');
-const Store = require('electron-store');
+const Store = require('electron-store').default;
 
 const {
     refreshDialog, deleteDialog,
@@ -655,12 +655,14 @@ class MarketplaceActionHandler {
     }
 
     reloadCustomDialog(file) {
+        console.log('reloadCustomDialog', file, require.resolve(file))
         try {
             delete require.cache[require.resolve(file)];
             global.dialogCacheClear()
+            // todo: check what is the cache key?
             global?.mMenu?.reloadMarketDialog();
             global?.mMenu?.recreateMenuObject();
-            dialog.showMessageBoxSync({ message: 'Dialog reloaded' });            
+            dialog.showMessageBoxSync({ message: 'Dialog reloaded' });
         } catch (e) {
             dialog.showErrorBox('Error', 'Could not reload dialog: ' + e.message);
         }

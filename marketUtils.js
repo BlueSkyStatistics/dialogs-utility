@@ -1,5 +1,5 @@
 const path = require('path')
-const Store = require("electron-store");
+const Store = require("electron-store").default;
 const fs = require("fs");
 const {dialog} = require("@electron/remote");
 const hiddenStore = new Store({name:`hideconfig`});
