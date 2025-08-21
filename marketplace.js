@@ -637,7 +637,7 @@ You can create new dialogs and add them to marketplace by following the steps be
             $(`#market_chapter_${res['tab']}`).trigger('click')
             setTimeout(function() {
                 document.getElementById(`market_tab_${res['tab']}`).scrollIntoView(false)
-            }, 1000);
+            }, 2000);
 
             var userDialogs = store.get("nonBaseDialogs", [])
             store.delete("nonBaseDialogs")
