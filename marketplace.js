@@ -179,7 +179,8 @@ class marketplace {
                                     </div>
                                     <div class="row mt-1">
                                         <div class="col-6">
-                                            <input type="file" id="formFile" accept=".js">      
+                                            <button type="button" id="formFile" onclick="selectSrcCustomDialogJS()" >Choose File</button>   
+                                            <span id="dialogfileName">No file chosen</span>   
                                         </div>
                                         <div class="col-6">
                                             <span>Dialogs JS file</span>
@@ -187,7 +188,8 @@ class marketplace {
                                     </div>
                                     <div class="row mt-1">
                                         <div class="col-6">
-                                            <input type="file" id="iconFile" accept=".svg">
+                                            <button type="button" id="iconFile" onclick="selectSrcCustomDialogSVG()" >Choose File</button>   
+                                            <span id="svgfileName">No file chosen</span>                                             
                                         </div>
                                         <div class="col-6">
                                             <span>(Optional) Dialogs icon file (.svg only) </span>
