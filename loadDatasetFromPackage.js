@@ -29,7 +29,7 @@ BSkyLoadRefresh(BSkyGetDatasetNameFromPackageDatasetList("{{selected.selectAData
             `,
             pre_start_r: JSON.stringify({
                 selectAPackage:"c('All_Installed_Packages',installed.packages()[,1])",
-                selectADataset: "BSkyGetDatasetNameTitle ()",
+                selectADataset: "BSkyGetDatasetNameTitle()",
             })
         }
         var objects = {
