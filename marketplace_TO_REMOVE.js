@@ -13,7 +13,7 @@ const {
     refreshDialog, deleteDialog,
     removeDialog, addDialog,
     uploadDialog, searchDialog, checkForSearch,
-} = require('./marketUtils');
+} = require('./marketUtils_TO_REMOVE');
 const {dialog, getCurrentWindow} = require("@electron/remote");
 
 // === CONSTANTS ===

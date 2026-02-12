@@ -11,7 +11,7 @@ const nav = () => ({
     "tab": "file",
     "buttons": [
         "./loadDatasetFromPackage",
-        // "./marketplace",
+        "./marketplace_TO_REMOVE",
     ]
 })
 
