@@ -3,6 +3,7 @@ const Store = require("electron-store").default;
 const fs = require("fs");
 const {dialog} = require("@electron/remote");
 const hiddenStore = new Store({name:`hideconfig`});
+const {webUtils} = require("electron");
 
 function addDialog(ev, it, id, chapterOverride) {
     const filePath = path.normalize(fs.realpathSync(require.resolve(it)))
@@ -174,7 +175,7 @@ function uploadDialog() {
         dialog.showErrorBox("Dialog not specified", "Please click 'Choose File' to select a dialog file and then click 'Upload'")
         return 1
     }
-    const fp = $("#formFile")[0].files[0].path
+    const fp = webUtils.getPathForFile($("#formFile")[0].files[0])
     try {
         require(fp)
     } catch (ex) {
@@ -207,7 +208,7 @@ function uploadDialog() {
     }
     fs.writeFileSync(path.join(dialogsDir, $("#formFile")[0].files[0].name), dialogCode)
     if ($("#iconFile")[0].files.length > 0) {
-        fs.writeFileSync(path.join(dialogsDir, $("#iconFile")[0].files[0].name), fs.readFileSync($("#iconFile")[0].files[0].path).toString())
+        fs.writeFileSync(path.join(dialogsDir, $("#iconFile")[0].files[0].name), fs.readFileSync(webUtils.getPathForFile($("#iconFile")[0].files[0])).toString())
     }
     var chapter = $("#addDialogsChapter").val()
     // todo: fix create dialogs.json if not exists
