@@ -7,8 +7,7 @@
 var Sqrl = require('squirrelly');
 var path = require('path');
 const fs = require('fs')
-const Store = require('electron-store');
-
+const Store = require('electron-store').default;
 const hiddenStore = new Store({name:`hideconfig`});
 
 const blankDialogs = {
@@ -579,7 +578,7 @@ You can create new dialogs and add them to marketplace by following the steps be
     onCreateMarketplace() {
         var main = store.get('market', {})
         var outerthis = this
-        if (!mMenu.getUserDialogsPath(main) && $(`#${this.id}GitUrl`).val()=="") {
+        if (!mMenu.getUserDialogsPath(main) && $(`#${this.id}GitUrl`).val()==undefined) {
             var folder = dialog.showOpenDialogSync(getCurrentWindow(), {
                     title: 'Select path for market dialogs',
                     defaultPath: sessionStore.get("HomeDir"),

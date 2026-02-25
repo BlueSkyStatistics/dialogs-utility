@@ -25,7 +25,7 @@
     "scripts": {},
     "dependencies": {
         "squirrelly": "7.9.2",
-        "electron-store": "^7.0.2"
+        "electron-store": "^10.1.0"
     },
     "devDependencies": {
         "asar": "^3.2.0"
