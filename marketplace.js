@@ -8,13 +8,16 @@ const Sqrl = require('squirrelly');
 const path = require('path');
 const fs = require('fs');
 const Store = require('electron-store').default;
+const hiddenStore = new Store({name:`hideconfig`});
 
 const {
     refreshDialog, deleteDialog,
     removeDialog, addDialog,
     uploadDialog, searchDialog, checkForSearch,
-} = require('./marketUtils');
+} = require('./marketUtils.js');
 const {dialog, getCurrentWindow} = require("@electron/remote");
+const store = global.store;
+
 
 // === CONSTANTS ===
 const MARKETPLACE_CONFIG = {
@@ -264,7 +267,7 @@ class TemplateManager {
     }
 
     _getCardTemplate() {
-        return `<div class="card" bs-tab="{{chapter}}">
+        return `<div class="card text-white" bs-tab="{{chapter}}">
             <div class="card-header">
                 <div class="row">
                     <div class="col-8 title">
@@ -310,7 +313,7 @@ class TemplateManager {
                             </button>
                         {{#else}}
                             <button type="button" class="btn btn-sm btn-outline-secondary float-right {{if(options.hidden)}} hidden{{/if}}" data-child="{{child}}" data-modal="{{if(options.dialog.modal)}}{{dialog.modal}}{{#else}}{{dialog.modal_id}}{{/if}}" data-action="hide" onclick="handleMarketActionClick(this)">Hide</button>
-                            <button type="button" class="btn btn-sm btn-outline-success float-right {{if(options.hidden)}}{{else}} hidden{{/if}}" data-child="{{child}}" data-modal="{{if(options.dialog.modal)}}{{dialog.modal}}{{#else}}{{dialog.modal_id}}{{/if}}" data-action="show" onclick="handleMarketActionClick(this)">Show</button>
+                            <button type="button" class="btn btn-sm btn-outline-success float-right {{if(!options.hidden)}}{{else}} hidden{{/if}}" data-child="{{child}}" data-modal="{{if(options.dialog.modal)}}{{dialog.modal}}{{#else}}{{dialog.modal_id}}{{/if}}" data-action="show" onclick="handleMarketActionClick(this)">Show</button>
                         {{/if}}
                     </div>
                 </div>
@@ -322,7 +325,7 @@ class TemplateManager {
     }
 
     _getUserDialogCardTemplate() {
-        return `<div class="card" bs-tab="{{chapter}}">
+        return `<div class="card text-white" bs-tab="{{chapter}}">
             <div class="card-header">
                 <div class="row">
                     <div class="col-8 title">
@@ -362,7 +365,7 @@ class TemplateManager {
     }
 
     _getBaseDialogCardTemplate() {
-        return `<div class="card" bs-tab="{{chapter}}">
+        return `<div class="card text-white" bs-tab="{{chapter}}">
             <div class="card-header">
                 <div class="row">
                     <div class="col-8 title">
@@ -386,7 +389,7 @@ class TemplateManager {
     }
 
     _getModuleCardTemplate() {
-        return `<div class="card" bs-tab="modules">
+        return `<div class="card text-white" bs-tab="modules">
             <div class="card-header">
                 <div class="row">
                     <div class="col-8 title">
@@ -425,7 +428,7 @@ class MarketplaceActionHandler {
         return global.marketplaceActionHandler;
     }
     constructor() {
-        this.hiddenStore = new Store({ name: 'hideconfig' });
+        this.hiddenStore = hiddenStore
         this.addDialog = addDialog;
         this.marketplace = global?.mp;
     }
@@ -436,12 +439,13 @@ class MarketplaceActionHandler {
         let btnPath = fileOrButton;
         if (!btnPath.endsWith('.js')) btnPath += '.js';
         btnPath = path.resolve(path.normalize(btnPath));
-        return userDialogs.some(ud => {
-            let udPath = ud;
-            if (!udPath.endsWith('.js')) udPath += '.js';
-            udPath = path.resolve(path.normalize(udPath));
-            return btnPath === udPath;
-        });
+        return this.marketplace.customDialogs.some(i => i.file === btnPath) ||
+            userDialogs.some(ud => {
+                let udPath = ud;
+                if (!udPath.endsWith('.js')) udPath += '.js';
+                udPath = path.resolve(path.normalize(udPath));
+                return btnPath === udPath;
+            });
     }
 
     handleAction(button) {
@@ -514,7 +518,7 @@ class MarketplaceActionHandler {
         // Get chapters
         let dialogsJson;
         try {
-            dialogsJson = JSON.parse(fs.readFileSync(path.normalize(mMenu.getUserDialogsPath())));
+            dialogsJson = JSON.parse(fs.readFileSync(path.normalize(global.mMenu.getUserDialogsPath())));
         } catch (e) {
             dialog.showErrorBox('Error', 'Could not read dialogs.json');
             return;
@@ -553,7 +557,7 @@ class MarketplaceActionHandler {
         if (!chapter) return;
         let dialogsJson;
         try {
-            dialogsJson = JSON.parse(fs.readFileSync(path.normalize(mMenu.getUserDialogsPath())));
+            dialogsJson = JSON.parse(fs.readFileSync(path.normalize(global.mMenu.getUserDialogsPath())));
         } catch (e) {
             dialog.showErrorBox('Error', 'Could not read dialogs.json');
             return;
@@ -568,9 +572,9 @@ class MarketplaceActionHandler {
         if (!absFile.endsWith('.js')) absFile += '.js';
         absFile = path.resolve(absFile);
         // Add dialog if not already present
-        if (!section.buttons.some(btn => path.resolve(path.isAbsolute(btn) ? btn.endsWith('.js') ? btn : btn + '.js' : path.join(path.dirname(mMenu.getUserDialogsPath()), path.basename(btn.endsWith('.js') ? btn : btn + '.js'))) === absFile)) {
+        if (!section.buttons.some(btn => path.resolve(path.isAbsolute(btn) ? btn.endsWith('.js') ? btn : btn + '.js' : path.join(path.dirname(global.mMenu.getUserDialogsPath()), path.basename(btn.endsWith('.js') ? btn : btn + '.js'))) === absFile)) {
             section.buttons.push(absFile);
-            fs.writeFileSync(path.normalize(mMenu.getUserDialogsPath()), JSON.stringify(dialogsJson, null, 2));
+            fs.writeFileSync(path.normalize(global.mMenu.getUserDialogsPath()), JSON.stringify(dialogsJson, null, 2));
             dialog.showMessageBoxSync({ message: 'Dialog installed in ' + chapter });
             // Also add to menu/UI immediately
             try {
@@ -586,8 +590,8 @@ class MarketplaceActionHandler {
                 userDialogs.push(absFile);
                 store.set("nonBaseDialogs", userDialogs);
             }
-            global?.mMenu?.reloadMarketDialog();
-            global?.mMenu?.recreateMenuObject();
+            // global?.mMenu?.reloadMarketDialog();
+            // global?.mMenu?.recreateMenuObject();
         } else {
             dialog.showMessageBoxSync({ message: 'Dialog already installed in ' + chapter });
         }
@@ -596,7 +600,7 @@ class MarketplaceActionHandler {
     uninstallCustomDialog(file, sectionName) {
         let dialogsJson;
         try {
-            dialogsJson = JSON.parse(fs.readFileSync(path.normalize(mMenu.getUserDialogsPath())));
+            dialogsJson = JSON.parse(fs.readFileSync(path.normalize(global.mMenu.getUserDialogsPath())));
         } catch (e) {
             dialog.showErrorBox('Error', 'Could not read dialogs.json');
             return;
@@ -611,7 +615,7 @@ class MarketplaceActionHandler {
             // Remove all entries that match the normalized path
             const origLen = section.buttons.length;
             section.buttons = section.buttons.filter(btn => {
-                let btnPath = path.isAbsolute(btn) ? btn : path.join(path.dirname(mMenu.getUserDialogsPath()), path.basename(btn));
+                let btnPath = path.isAbsolute(btn) ? btn : path.join(path.dirname(global.mMenu.getUserDialogsPath()), path.basename(btn));
                 if (!btnPath.endsWith('.js')) btnPath += '.js';
                 btnPath = path.resolve(btnPath);
                 return btnPath !== absFile;
@@ -626,12 +630,14 @@ class MarketplaceActionHandler {
                 // Find the card in the DOM for event context
                 const card = document.querySelector(`.card-header [data-file='${file}']`);
                 const fakeEvent = { target: card };
-                removeDialog(fakeEvent, absFile, undefined, sectionName);
+                const fp = require.resolve(absFile);
+                const customDialogObj = this.marketplace.customDialogs.find(i => i.file === fp) || {}
+                removeDialog(fakeEvent, absFile, customDialogObj?.id, sectionName);
             } catch (e) {
                 console.error('Error calling removeDialog after uninstall:', e);
             }
-            global?.mMenu?.reloadMarketDialog();
-            global?.mMenu?.recreateMenuObject();
+            // global?.mMenu?.reloadMarketDialog();
+            // global?.mMenu?.recreateMenuObject();
         } else {
             console.debug('Dialog was not installed')
         }
@@ -794,10 +800,11 @@ class Marketplace {
     }
 
     mergeMarkets() {
+        console.log('mergeMarkets');
         // const mainMenu = store.get('main', {}).menu
         const mainMenu = global.mMenu.main.menu
         const menuList = mainMenu.map(item => item.name);
-        const markets = store.get('market').markets;
+        const markets = store.get('market', {markets: []}).markets;
         const totalInstalled = [];
         const notInstalled = [];
         const marketToDialog = {};
@@ -832,7 +839,12 @@ class Marketplace {
                 }
 
                 menuFromMarket.forEach(menuName => {
-                    marketToDialog[menuName] = tmpPath
+                    if (typeof menuName === 'object') {
+                        marketToDialog[`INTERNAL::${menuName.name}`] = tmpPath
+                    } else {
+                        marketToDialog[menuName] = tmpPath
+                    }
+
                 });
             });
         });
@@ -880,7 +892,7 @@ class Marketplace {
     // }
 
     get appPath() {
-        return sessionStore.get("appPath", process.cwd());
+        return sessionStore.get("appRoot", process.cwd());
     }
 
     _processChapters(mainMenu) {
@@ -1063,6 +1075,7 @@ class Marketplace {
     }
 
     onShow() {
+        console.log('Marketplace onShow');
         ipcRenderer.invoke('logEvent', { category: "dialog", action: "show", title: "marketplace" });
         this._handleModalConflicts();
         this._configureMarketplaceDisplay();
@@ -1080,7 +1093,7 @@ class Marketplace {
     }
 
     _configureMarketplaceDisplay() {
-        if (mMenu.getUserDialogsPath() === undefined) {
+        if (global.mMenu.getUserDialogsPath() === undefined) {
             this._showMarketplaceSetup();
         } else {
             this._showDialogManagement();
@@ -1095,7 +1108,7 @@ class Marketplace {
     _showDialogManagement() {
         $(`#${this.id}AddMarketplace`).addClass("hidden");
         $(`#${this.id}AddDialog`).removeClass("hidden");
-        $(`#${this.id}DialogLocation`).html(mMenu.getUserDialogsPath().replace('dialogs.json', ''));
+        $(`#${this.id}DialogLocation`).html(global.mMenu.getUserDialogsPath().replace('dialogs.json', ''));
     }
 
     onHide() {
@@ -1106,7 +1119,7 @@ class Marketplace {
     onCreateMarketplace() {
         const marketplaceData = store.get('market', { markets: [] });
         const gitUrl = $(`#${this.id}GitUrl`).val();
-        const userHasDialogsPath = mMenu.getUserDialogsPath(marketplaceData);
+        const userHasDialogsPath = global.mMenu.getUserDialogsPath(marketplaceData);
 
         if (!userHasDialogsPath && gitUrl === "") {
             this._createFileBasedMarketplace(marketplaceData);
@@ -1162,13 +1175,14 @@ class Marketplace {
     }
 
     _updateMarketplaceConfig(marketplaceData) {
-        const marketplaceConfigPath = store.get("mplacepath");
+        // const marketplaceConfigPath = store.get("mplacepath");
+        const marketplaceConfigPath = global.mMenu.mPlacePath
         fs.writeFileSync(marketplaceConfigPath, JSON.stringify(marketplaceData));
     }
 
     _refreshMarketplace() {
-        mMenu.reloadMarketFromFile();
-        mMenu.compileNonBaseDialogs();
+        global.mMenu.reloadMarketFromFile();
+        global.mMenu.compileNonBaseDialogs();
     }
 
     onSave() {
@@ -1201,10 +1215,10 @@ class Marketplace {
                 if (dialog.installed) {
                     return dialog.installedSections.map(sectionName => {
                         const pill = `<div class=\"bg-success rounded-pill pl-3 pr-3\" style=\"height: 20px;\">${sectionName}</div>`;
-                        return `<div class=\"card\" bs-tab=\"custom_dialogs\">\n                            <div class=\"card-header\">\n                                <div class=\"row\">\n                                    <div class=\"col-8 title\">\n                                        <div class=\"d-flex\">\n                                            <div class=\"d-inline-flex\"><h6>${dialog.name}</h6></div>\n                                            <div class=\"d-inline-flex ml-2\">${pill}</div>\n                                        </div>\n                                    </div>\n                                    <div class=\"col-4\">\n                                        <button type=\"button\" class=\"btn btn-sm btn-outline-danger float-right\" data-file=\"${dialog.file}\" data-section=\"${sectionName}\" data-action=\"uninstall\" onclick=\"handleMarketActionClick(this)\">Uninstall</button>\n                                        <button type=\"button\" class=\"btn btn-sm btn-outline-warning btn-refresh float-right ml-2\" data-file=\"${dialog.file}\" data-section=\"${sectionName}\" data-action=\"reload\" onclick=\"handleMarketActionClick(this)\">Reload</button>\n                                        <button type=\"button\" class=\"btn btn-sm btn-outline-danger float-right ml-2\" data-file=\"${dialog.file}\" data-action=\"delete\" onclick=\"handleMarketActionClick(this)\"\n                                    </div>\n                                </div>\n                            </div>\n                            <div class=\"card-body\">${dialog.description}</div>\n                        </div>`;
+                        return `<div class=\"card text-white\" bs-tab=\"custom_dialogs\"><div class=\"card-header\"><div class=\"row\"><div class=\"col-8 title\"><div class=\"d-flex\"><div class=\"d-inline-flex\"><h6>${dialog.name}</h6></div><div class=\"d-inline-flex ml-2\">${pill}</div></div></div><div class=\"col-4\"><button type=\"button\" class=\"btn btn-sm btn-outline-danger float-right\" data-file=\"${dialog.file}\" data-section=\"${sectionName}\" data-action=\"uninstall\" onclick=\"handleMarketActionClick(this)\">Uninstall</button><button type=\"button\" class=\"btn btn-sm btn-outline-warning btn-refresh float-right ml-2\" data-file=\"${dialog.file}\" data-section=\"${sectionName}\" data-action=\"reload\" onclick=\"handleMarketActionClick(this)\">Reload</button><button type=\"button\" class=\"btn btn-sm btn-outline-danger float-right ml-2\" data-file=\"${dialog.file}\" data-action=\"delete\" onclick=\"handleMarketActionClick(this)\"</div></div></div><div class=\"card-body\">${dialog.description}</div></div>`;
                     });
                 } else {
-                    return [`<div class=\"card\" bs-tab=\"custom_dialogs\">\n                        <div class=\"card-header\">\n                            <div class=\"row\">\n                                <div class=\"col-8 title\">\n                                    <div class=\"d-flex\">\n                                        <div class=\"d-inline-flex\"><h6>${dialog.name}</h6></div>\n                                    </div>\n                                </div>\n                                <div class=\"col-4\">\n                                    <button type=\"button\" class=\"btn btn-sm btn-outline-primary float-right\" data-file=\"${dialog.file}\" data-action=\"install\" onclick=\"handleMarketActionClick(this)\">Install</button>\n                                    <button type=\"button\" class=\"btn btn-sm btn-outline-danger float-right ml-2\" data-file=\"${dialog.file}\" data-action=\"delete\" onclick=\"handleMarketActionClick(this)\">Delete</button>\n                                </div>\n                            </div>\n                        </div>\n                        <div class=\"card-body\">${dialog.description}</div>\n                    </div>`];
+                    return [`<div class=\"card text-white\" bs-tab=\"custom_dialogs\">\n                        <div class=\"card-header\">\n                            <div class=\"row\">\n                                <div class=\"col-8 title\">\n                                    <div class=\"d-flex\">\n                                        <div class=\"d-inline-flex\"><h6>${dialog.name}</h6></div>\n                                    </div>\n                                </div>\n                                <div class=\"col-4\">\n                                    <button type=\"button\" class=\"btn btn-sm btn-outline-primary float-right\" data-file=\"${dialog.file}\" data-action=\"install\" onclick=\"handleMarketActionClick(this)\">Install</button>\n                                    <button type=\"button\" class=\"btn btn-sm btn-outline-danger float-right ml-2\" data-file=\"${dialog.file}\" data-action=\"delete\" onclick=\"handleMarketActionClick(this)\">Delete</button>\n                                </div>\n                            </div>\n                        </div>\n                        <div class=\"card-body\">${dialog.description}</div>\n                    </div>`];
                 }
             });
             tabContent.innerHTML = newCards.join('');
@@ -1244,6 +1258,7 @@ class Marketplace {
     }
 
     compile() {
+        console.log('Compile marketplace');
         return {
             modal: this.renderContent(),
             id: this.id,
@@ -1266,9 +1281,9 @@ class Marketplace {
         // Scan custom_dialogs folder for .js files
         let dialogFiles = [];
         try {
-            dialogFiles = fs.readdirSync(path.dirname(mMenu.getUserDialogsPath()))
+            dialogFiles = fs.readdirSync(path.dirname(global.mMenu.getUserDialogsPath()))
                 .filter(f => f.endsWith('.js'))
-                .map(f => path.normalize(path.join(path.dirname(mMenu.getUserDialogsPath()), f)));
+                .map(f => path.normalize(path.join(path.dirname(global.mMenu.getUserDialogsPath()), f)));
         } catch (e) {
             return [];
         }
@@ -1276,10 +1291,10 @@ class Marketplace {
         let installedMap = new Map(); // file -> [sectionName, ...]
         let dialogsJson = null;
         try {
-            dialogsJson = JSON.parse(fs.readFileSync(path.normalize(mMenu.getUserDialogsPath())));
+            dialogsJson = JSON.parse(fs.readFileSync(path.normalize(global.mMenu.getUserDialogsPath())));
             dialogsJson.menu.forEach(section => {
                 section.buttons.forEach(btn => {
-                    let btnPath = path.isAbsolute(btn) ? btn : path.join(path.dirname(mMenu.getUserDialogsPath()), path.basename(btn));
+                    let btnPath = path.isAbsolute(btn) ? btn : path.join(path.dirname(global.mMenu.getUserDialogsPath()), path.basename(btn));
                     if (!btnPath.endsWith('.js')) btnPath += '.js';
                     btnPath = path.resolve(path.normalize(btnPath));
                     if (!installedMap.has(btnPath)) installedMap.set(btnPath, []);
@@ -1314,7 +1329,7 @@ class Marketplace {
                 // One card per installed section
                 return dialog.installedSections.map(sectionName => {
                     const pill = `<div class=\"bg-success rounded-pill pl-3 pr-3\" style=\"height: 20px;\">${sectionName}</div>`;
-                    return `<div class=\"card\" bs-tab=\"custom_dialogs\">
+                    return `<div class=\"card text-white\" bs-tab=\"custom_dialogs\">
                         <div class=\"card-header\">
                             <div class=\"row\">
                                 <div class=\"col-8 title\">
@@ -1335,7 +1350,7 @@ class Marketplace {
                 });
             } else {
                 // Not installed: single card with Install button
-                return [`<div class=\"card\" bs-tab=\"custom_dialogs\">
+                return [`<div class=\"card text-white\" bs-tab=\"custom_dialogs\">
                     <div class=\"card-header\">
                         <div class=\"row\">
                             <div class=\"col-8 title\">
