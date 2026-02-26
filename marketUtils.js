@@ -9,9 +9,11 @@ function addDialog(ev, it, id, chapterOverride) {
     global.dialogCacheClear(filePath)
 
     let isOlderDialog = false // true means dialog existed but was hidden (HIDE)
-    const modal = id !== undefined && mMenu.main_nav.modals.find(modal => modal.id === id)
+    const modal = id !== undefined && global.mMenu.main_nav.modals.find(i => i.id === id || i._filePath === filePath)
     if (!modal) {
-        mMenu.main_nav.modals.push(global.getDialog(it, 'item'))
+        const {dialog: dialogObj, path} = global.getDialog(it, 'item', true)
+        dialogObj._filePath = path
+        global.mMenu.main_nav.modals.push(dialogObj)
 
         let hiddenObjects = hiddenStore.get('hiddenMenuObjects', []);
         const idx = hiddenObjects.indexOf(it)
@@ -23,9 +25,9 @@ function addDialog(ev, it, id, chapterOverride) {
         }
     }
     const chapter = chapterOverride || $(ev.target).closest('.card').attr('bs-tab')
-    mMenu.addMenuItem(it, chapter, isOlderDialog);
-    mMenu.reloadMarketDialog()
-    mMenu.recreateMenuObject()
+    global.mMenu.addMenuItem(it, chapter, isOlderDialog);
+    // global.mMenu.reloadMarketDialog()
+    // global.mMenu.recreateMenuObject()
 }
 
 const deleteDialog = (ev, itm, id) => {
@@ -84,9 +86,10 @@ const deleteDialog = (ev, itm, id) => {
     const filePath = fs.realpathSync(itm.endsWith(".js") ? itm : `${itm}.js`);
     global.dialogCacheClear(filePath);
 
-    const modalIndex = mMenu.main_nav.modals.findIndex((modal) => modal.id === id);
+    const modalIndex = global.mMenu.main_nav.modals.findIndex((modal) => modal.id === id || modal._filePath === filePath);
     if (modalIndex !== -1) {
-        mMenu.main_nav.modals.splice(modalIndex, 1);
+        global.mMenu.main_nav.modals.splice(modalIndex, 1);
+        global.mMenu.saveMain()
     }
 
     let hiddenObjects = hiddenStore.get('hiddenMenuObjects', []);
@@ -124,11 +127,15 @@ function refreshDialog(ev, it, id) {
 }
 
 function removeDialog(ev, item, id, chapterOverride) {
-    mMenu.removeMenuItem(item, chapterOverride || $(ev.target).closest('.card').attr('bs-tab'))
+    // global.mMenu.removeMenuItem(item, chapterOverride || $(ev.target).closest('.card').attr('bs-tab'))
+    const chapterName = chapterOverride || $(ev.target).closest('.card').attr('bs-tab')
+    let filePath = fs.realpathSync(item.endsWith('.js') ? item : `${item}.js`)
+    filePath = require.resolve(filePath)
+    global.mMenu.removeMenuItem(chapterName, filePath)
+    global.dialogCacheClear(filePath)
+
     let attrval = (process.platform === 'win32') ? $(ev.target).attr("onclick").replace(/\\/g, "\\\\") : $(ev.target).attr("onclick")
     $("#marketplace .card").find(`button[onclick="${attrval}"]`).each((index, item) => {
-        item
-    }).each((index, item) => {
         $(item).parent().find('.btn-outline-primary').removeClass('hidden')
         $(item).addClass('hidden')
         $(item).parent().find('.btn-refresh').addClass('hidden')
@@ -136,14 +143,16 @@ function removeDialog(ev, item, id, chapterOverride) {
     $(`button[data-modal='${id}']`).remove()
     $(`button[onclick='r_before_modal("${id}")']`).remove()
     $(`#${id}`).remove()
-    var filepat = fs.realpathSync(item.endsWith('.js') ? item : `${item}.js`)
-    global.dialogCacheClear(filepat)
-    for (var i = 0; i < mMenu.main_nav.modals.length; i++) {
-        if (mMenu.main_nav.modals[i].id == id) {
-            mMenu.main_nav.modals.splice(i, 1)
-            break
-        }
-    }
+
+    // const modalIndex = global.mMenu.main_nav.modals.findIndex((i) => i.id === id || i._filePath === filePath);
+    // if (modalIndex !== -1) {
+    //     global.mMenu.main_nav.modals.splice(modalIndex, 1);
+    //     global.mMenu.saveMain()
+    //     const chapter = global.mMenu.main.menu.find(chapter => chapter.name === chapterOverride)
+    //     const chapterButtonIndex = chapter.buttons.findIndex(i => i === item)
+    //     chapterButtonIndex > -1 && global.mMenu.main.menu.find(chapter => chapter.name === chapterOverride)?.buttons.splice(chapterButtonIndex, 1)
+    // }
+
     global?.mMenu?.reloadMarketDialog()
     global?.mMenu?.recreateMenuObject()
 }
@@ -166,15 +175,17 @@ function checkForSearch() {
 }
 
 function openDialogsFolder() {
-    mMenu.openUserDialogsFolder(mMenu.getUserDialogsPath().replace('dialogs.json', ''))
+    global.mMenu.openUserDialogsFolder(global.mMenu.getUserDialogsPath().replace('dialogs.json', ''))
 }
 
 function uploadDialog() {
-    if (!$("#formFile")[0].files[0]) {
+    const fileObj = $("#formFile")[0].files[0]
+    if (!fileObj) {
         dialog.showErrorBox("Dialog not specified", "Please click 'Choose File' to select a dialog file and then click 'Upload'")
         return 1
     }
-    const fp = $("#formFile")[0].files[0].path
+    // const fp = $("#formFile")[0].files[0].path
+    const fp = global.electronApi.getFilePath(fileObj)
     try {
         require(fp)
     } catch (ex) {
@@ -182,9 +193,10 @@ function uploadDialog() {
         return 1
     }
     global.dialogCacheClear(fp)
-    var dialogCode = fs.readFileSync(fp).toString();
+    const dialogCode = fs.readFileSync(fp).toString();
+    let dialogId
     try {
-        var dialogId = dialogCode.match(/id\:( )?(\"||\')([a-z,A-Z,_0-9]*)(\"||\')/g)[0].split(":")[1].trim().replace(/"/g, '').replace(/'/g, '')
+        dialogId = dialogCode.match(/id\:( )?(\"||\')([a-z,A-Z,_0-9]*)(\"||\')/g)[0].split(":")[1].trim().replace(/"/g, '').replace(/'/g, '')
     } catch {
         dialog.showErrorBox("Dialog Error", "Dialog do not contain dialog ID")
         return 1
@@ -193,7 +205,7 @@ function uploadDialog() {
         dialog.showErrorBox("Dialog Error", "Dialog you trying to ingest already exists, please change dialog ID, or remove existing dialog")
         return 1
     }
-    var dialogsDir = mMenu.getUserDialogsPath().replace('dialogs.json', '')
+    const dialogsDir = global.mMenu.getUserDialogsPath().replace('dialogs.json', '')
     if (!dialogsDir) {
         dialog.showErrorBox("Dialog Error", "No dialogs directory found, please restart app and specify market dialog directory")
         return 1
@@ -201,22 +213,27 @@ function uploadDialog() {
     if (!fs.existsSync(dialogsDir)) {
         fs.mkdirSync(dialogsDir);
     }
-    if (fs.existsSync(path.join(dialogsDir, $("#formFile")[0].files[0].name))) {
+    if (fs.existsSync(path.join(dialogsDir, fileObj.name))) {
         dialog.showErrorBox("Dialog Error", "Dialog with that filename already exists, please provide other name to dialog")
         return 1
     }
-    fs.writeFileSync(path.join(dialogsDir, $("#formFile")[0].files[0].name), dialogCode)
+    fs.writeFileSync(path.join(dialogsDir, fileObj.name), dialogCode)
     if ($("#iconFile")[0].files.length > 0) {
-        fs.writeFileSync(path.join(dialogsDir, $("#iconFile")[0].files[0].name), fs.readFileSync($("#iconFile")[0].files[0].path).toString())
+        const iconFileObj = $("#iconFile")[0].files[0]
+        const iconFilePath = global.electronApi.getFilePath(iconFileObj)
+        fs.writeFileSync(
+            path.join(dialogsDir, iconFileObj.name),
+            fs.readFileSync(iconFilePath).toString()
+        )
     }
-    var chapter = $("#addDialogsChapter").val()
+    const chapter = $("#addDialogsChapter").val()
     // todo: fix create dialogs.json if not exists
-    var userDialogs = JSON.parse(fs.readFileSync(path.join(dialogsDir, 'dialogs.json')));
-    var dialogsImport = path.join(dialogsDir, $("#formFile")[0].files[0].name.replace(".js", ''))
-    var tab = ''
-    for (var i = 0; i < userDialogs['menu'].length; i++) {
-        if (userDialogs['menu'][i]['name'] == chapter) {
-            if (userDialogs['menu'][i]['buttons'].indexOf(dialogsImport) == -1) {
+    const userDialogs = JSON.parse(fs.readFileSync(path.join(dialogsDir, 'dialogs.json')));
+    let dialogsImport = path.join(dialogsDir, fileObj.name.replace(".js", ''))
+    let tab = ''
+    for (let i = 0; i < userDialogs['menu'].length; i++) {
+        if (userDialogs['menu'][i]['name'] === chapter) {
+            if (userDialogs['menu'][i]['buttons'].indexOf(dialogsImport) === -1) {
                 dialogsImport = dialogsImport.replace(/\\/g, "/");
                 userDialogs['menu'][i]['buttons'].push(dialogsImport)
                 tab = userDialogs['menu'][i]['tab']
