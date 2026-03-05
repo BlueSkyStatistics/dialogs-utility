@@ -394,17 +394,10 @@ class MarketplaceActionHandler {
 
     // Helper to determine if a dialog is a user/custom dialog
     _isUserDialog(fileOrButton) {
-        const userDialogs = store.get("nonBaseDialogs", []);
         let btnPath = fileOrButton;
         if (!btnPath.endsWith('.js')) btnPath += '.js';
         btnPath = path.resolve(path.normalize(btnPath));
-        return this.marketplace.customDialogs.some(i => i.file === btnPath) ||
-            userDialogs.some(ud => {
-                let udPath = ud;
-                if (!udPath.endsWith('.js')) udPath += '.js';
-                udPath = path.resolve(path.normalize(udPath));
-                return btnPath === udPath;
-            });
+        return this.marketplace.customDialogs.some(i => i.file === btnPath)
     }
 
     handleAction(button) {
@@ -545,11 +538,11 @@ class MarketplaceActionHandler {
                 console.error('Error calling addDialog after install:', e);
             }
             // --- Update nonBaseDialogs so _isUserDialog works immediately ---
-            let userDialogs = store.get("nonBaseDialogs", []);
-            if (!userDialogs.includes(absFile)) {
-                userDialogs.push(absFile);
-                store.set("nonBaseDialogs", userDialogs);
-            }
+            // let userDialogs = store.get("nonBaseDialogs", []);
+            // if (!userDialogs.includes(absFile)) {
+            //     userDialogs.push(absFile);
+            //     store.set("nonBaseDialogs", userDialogs);
+            // }
             // global?.mMenu?.reloadMarketDialog();
             // global?.mMenu?.recreateMenuObject();
         } else {
@@ -845,9 +838,9 @@ class Marketplace {
         this.tabs = [];
     }
 
-    get userDialogs() {
-        return store.get("nonBaseDialogs", [])
-    }
+    // get userDialogs() {
+    //     return store.get("nonBaseDialogs", [])
+    // }
 
     // set userDialogs(userDialogs) {
     //     store.set("nonBaseDialogs", userDialogs);
@@ -931,12 +924,7 @@ class Marketplace {
         const isUserDialog = this.actionHandler._isUserDialog(button);
         const visibility = this._calculateVisibility(button);
         const fixedButton = this._fixPath(button);
-        let isHidden = false;
-        if (!isUserDialog) {
-            // Check if hidden in hiddenStore
-            const hiddenObjects = this.actionHandler.hiddenStore.get('hiddenMenuObjects', []);
-            isHidden = hiddenObjects.includes(fixedButton);
-        }
+
         try {
             const dialog = this._getDialogSafely(button);
             if (dialog) {
@@ -950,7 +938,9 @@ class Marketplace {
                     options.uninstall = visibility.uninstall;
                     options.install = visibility.install;
                 } else {
-                    options.hidden = isHidden;
+                    // Check if hidden in hiddenStore
+                    const hiddenObjects = this.actionHandler.hiddenStore.get('hiddenMenuObjects', []);
+                    options.hidden = hiddenObjects.includes(fixedButton);
                 }
                 return isUserDialog ?
                     this.templateRenderer.renderUserDialogCard(options) :
@@ -1141,7 +1131,7 @@ class Marketplace {
 
     _refreshMarketplace() {
         global.mMenu.reloadMarketFromFile();
-        global.mMenu.compileNonBaseDialogs();
+        // global.mMenu.compileNonBaseDialogs();
     }
 
     onSave() {
@@ -1166,8 +1156,8 @@ class Marketplace {
     reloadCustomDialogsTab() {
         this.customDialogs = this._scanCustomDialogs();
         // --- Update nonBaseDialogs to match all custom dialog files ---
-        const allCustomDialogPaths = this.customDialogs.map(d => d.file);
-        store.set('nonBaseDialogs', allCustomDialogPaths);
+        // const allCustomDialogPaths = this.customDialogs.map(d => d.file);
+        // store.set('nonBaseDialogs', allCustomDialogPaths);
         const tabContent = document.getElementById('market_tab_custom_dialogs');
         if (tabContent) {
             const newCards = this.customDialogs.flatMap(dialog => {
@@ -1209,11 +1199,10 @@ class Marketplace {
     }
 
     _updateUserDialogs(result) {
-        const userDialogs = this.userDialogs
         // store.delete("nonBaseDialogs");
         console.log('_updateUserDialogs', result)
-        userDialogs.push(result['import']);
-        store.set("nonBaseDialogs", userDialogs);
+        this.userDialogs.push(result['import']);
+        // store.set("nonBaseDialogs", userDialogs);
     }
 
     compile() {

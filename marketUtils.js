@@ -4,112 +4,65 @@ const fs = require("fs");
 const {dialog} = require("@electron/remote");
 const hiddenStore = new Store({name:`hideconfig`});
 
-function addDialog(ev, it, id, chapterOverride) {
-    const filePath = path.normalize(fs.realpathSync(require.resolve(it)))
-    global.dialogCacheClear(filePath)
 
-    let isOlderDialog = false // true means dialog existed but was hidden (HIDE)
-    const modal = id !== undefined && global.mMenu.main_nav.modals.find(i => i.id === id || i._filePath === filePath)
-    if (!modal) {
-        const {dialog: dialogObj, path} = global.getDialog(it, 'item', true)
-        dialogObj._filePath = path
-        global.mMenu.main_nav.modals.push(dialogObj)
 
-        let hiddenObjects = hiddenStore.get('hiddenMenuObjects', []);
-        const idx = hiddenObjects.indexOf(it)
-
-        if (idx > -1) {
-            hiddenObjects.splice(idx, 1)
-            hiddenStore.set('hiddenMenuObjects', hiddenObjects)
-            isOlderDialog = true
-        }
-    }
-    const chapter = chapterOverride || $(ev.target).closest('.card').attr('bs-tab')
-    global.mMenu.addMenuItem(it, chapter, isOlderDialog);
-    // global.mMenu.reloadMarketDialog()
-    // global.mMenu.recreateMenuObject()
+function addDialog(event, it, id, chapterOverride) {
+    const chapter = chapterOverride || $(event.target).closest('.card').attr('bs-tab');
+    const hidden = hiddenStore.get('hiddenMenuObjects', []);
+    const isRestored = hidden.includes(it);
+    global.mMenu.addDialog(it, chapter, {isRestored});
 }
 
 const deleteDialog = (ev, itm, id) => {
-    // todo: show confirmation dialog
-    const dialogsDir = path.dirname(itm); // Path from the card where 'delete' was clicked
     const chapter = ev.target.closest("div > .card").getAttribute("bs-tab");
 
-    let dialogJsonDir;
-    let userDialogJson;
-
+    // Update user's dialogs.json on disk
     const markets = store.get("market", {markets: []}).markets;
-
-    // Locate and update the relevant dialogs.json
     for (const market of markets) {
         if (!market.path.endsWith("dialogs.json")) continue;
+        try {
+            const dialogJsonDir = path.dirname(market.path);
+            const userDialogJson = JSON.parse(fs.readFileSync(path.normalize(market.path)));
+            const menu = userDialogJson.menu.find(m => m.name === chapter);
+            if (!menu) continue;
 
-        dialogJsonDir = path.dirname(market.path);
-        userDialogJson = JSON.parse(fs.readFileSync(path.normalize(market.path)));
-
-        const menu = userDialogJson.menu.find((menuItem) => menuItem.name === chapter);
-        if (!menu) continue;
-
-        const buttonIndex = menu.buttons.findIndex((button) => {
-            if (button.startsWith("./")) {
-                const absPath = path
-                    .join(dialogJsonDir, button.replace(".", ""))
-                    .replace(/\\/g, "/");
-                return absPath === itm;
+            const btnIdx = menu.buttons.findIndex(btn => {
+                if (typeof btn === 'string' && btn.startsWith("./")) {
+                    return path.join(dialogJsonDir, btn.replace(".", "")).replace(/\\/g, "/") === itm;
+                }
+                return btn === itm;
+            });
+            if (btnIdx !== -1) {
+                menu.buttons.splice(btnIdx, 1);
+                fs.writeFileSync(path.join(dialogJsonDir, "dialogs.json"), JSON.stringify(userDialogJson, null, 2));
+                break;
             }
-            return button === itm;
-        });
-
-        if (buttonIndex !== -1) {
-            menu.buttons.splice(buttonIndex, 1);
-            break;
+        } catch (err) {
+            console.warn(`deleteDialog: error updating ${market.path}`, err.message);
         }
     }
 
-    // Save updated dialogs.json if changes were made
-    if (dialogJsonDir && userDialogJson) {
-        fs.writeFileSync(
-            path.join(dialogJsonDir, "dialogs.json"),
-            JSON.stringify(userDialogJson, null, 2)
-        );
-    }
+    // Remove from menu (handles modals, cache, DOM)
+    global.mMenu.removeDialog(itm, chapter, {modalId: id, skipRender: true});
 
-    // Remove menu item and associated DOM elements
-    // mMenu.removeMenuItem(itm, $(ev.target).closest('div[role="tabpanel"]').attr("bs-tab"));
+    // Remove marketplace card from DOM
     $(ev.target).closest(".card").remove();
-    $(`button[data-modal='${id}']`).remove();
 
-    const modalElement = $(`#${id}`)[0];
-    if (modalElement) modalElement.remove();
-
-    // Clear dialog cache and remove modal from main navigation
-    const filePath = fs.realpathSync(itm.endsWith(".js") ? itm : `${itm}.js`);
-    global.dialogCacheClear(filePath);
-
-    const modalIndex = global.mMenu.main_nav.modals.findIndex((modal) => modal.id === id || modal._filePath === filePath);
-    if (modalIndex !== -1) {
-        global.mMenu.main_nav.modals.splice(modalIndex, 1);
-        global.mMenu.saveMain()
+    // Un-hide if it was hidden
+    const hidden = hiddenStore.get('hiddenMenuObjects', []);
+    const hidIdx = hidden.indexOf(itm);
+    if (hidIdx > -1) {
+        hidden.splice(hidIdx, 1);
+        hiddenStore.set('hiddenMenuObjects', hidden);
     }
 
-    let hiddenObjects = hiddenStore.get('hiddenMenuObjects', []);
-    const idx = hiddenObjects.indexOf(itm)
-
-    if (idx > -1) {
-        hiddenObjects.splice(idx, 1)
-        hiddenStore.set('hiddenMenuObjects', hiddenObjects)
-    }
-
-    // todo: delete from main
-
-    // Delete the file
+    // Delete the physical file
     try {
+        const filePath = fs.realpathSync(itm.endsWith(".js") ? itm : `${itm}.js`);
         fs.unlinkSync(filePath);
     } catch (error) {
         console.error(`Error deleting file: ${error.message}`);
     }
-
-
 }
 
 function refreshDialog(ev, it, id) {
@@ -127,34 +80,24 @@ function refreshDialog(ev, it, id) {
 }
 
 function removeDialog(ev, item, id, chapterOverride) {
-    // global.mMenu.removeMenuItem(item, chapterOverride || $(ev.target).closest('.card').attr('bs-tab'))
-    const chapterName = chapterOverride || $(ev.target).closest('.card').attr('bs-tab')
-    let filePath = fs.realpathSync(item.endsWith('.js') ? item : `${item}.js`)
-    filePath = require.resolve(filePath)
-    global.mMenu.removeMenuItem(chapterName, filePath)
-    global.dialogCacheClear(filePath)
+    const chapterName = chapterOverride || $(ev.target).closest('.card').attr('bs-tab');
 
-    let attrval = (process.platform === 'win32') ? $(ev.target).attr("onclick").replace(/\\/g, "\\\\") : $(ev.target).attr("onclick")
-    $("#marketplace .card").find(`button[onclick="${attrval}"]`).each((index, item) => {
-        $(item).parent().find('.btn-outline-primary').removeClass('hidden')
-        $(item).addClass('hidden')
-        $(item).parent().find('.btn-refresh').addClass('hidden')
-    })
-    $(`button[data-modal='${id}']`).remove()
-    $(`button[onclick='r_before_modal("${id}")']`).remove()
-    $(`#${id}`).remove()
+    // Remove from menu data + modals + caches (skip re-render, we do it below)
+    global.mMenu.removeDialog(item, chapterName, {modalId: id, skipRender: true});
 
-    // const modalIndex = global.mMenu.main_nav.modals.findIndex((i) => i.id === id || i._filePath === filePath);
-    // if (modalIndex !== -1) {
-    //     global.mMenu.main_nav.modals.splice(modalIndex, 1);
-    //     global.mMenu.saveMain()
-    //     const chapter = global.mMenu.main.menu.find(chapter => chapter.name === chapterOverride)
-    //     const chapterButtonIndex = chapter.buttons.findIndex(i => i === item)
-    //     chapterButtonIndex > -1 && global.mMenu.main.menu.find(chapter => chapter.name === chapterOverride)?.buttons.splice(chapterButtonIndex, 1)
-    // }
+    // Update marketplace UI: toggle Install/Uninstall button visibility
+    const attrval = (process.platform === 'win32')
+        ? $(ev.target).attr("onclick").replace(/\\/g, "\\\\")
+        : $(ev.target).attr("onclick");
+    $("#marketplace .card").find(`button[onclick="${attrval}"]`).each((_, el) => {
+        $(el).parent().find('.btn-outline-primary').removeClass('hidden');
+        $(el).addClass('hidden');
+        $(el).parent().find('.btn-refresh').addClass('hidden');
+    });
+    $(`button[onclick='r_before_modal("${id}")']`).remove();
 
-    global?.mMenu?.reloadMarketDialog()
-    global?.mMenu?.recreateMenuObject()
+    global.mMenu.reloadMarketDialog();
+    global.mMenu.recreateMenuObject();
 }
 
 function searchDialog() {
@@ -174,7 +117,7 @@ function checkForSearch() {
     }
 }
 
-function openDialogsFolder() {
+global.openDialogsFolder = () => {
     global.mMenu.openUserDialogsFolder(global.mMenu.getUserDialogsPath().replace('dialogs.json', ''))
 }
 
