@@ -775,7 +775,7 @@ class Marketplace {
         markets.forEach(market => {
             const provider = this.dataProvider.getProvider(market.provider);
             const marketData = provider(market);
-            const tmpPath = market.path.replace('dialogs.json', '')
+            const tmpPath = path.dirname(market.path)
 
             marketData.forEach(marketItem => {
                 const menuIndex = menuList.indexOf(marketItem.name)
@@ -1057,7 +1057,7 @@ class Marketplace {
     _showDialogManagement() {
         $(`#${this.id}AddMarketplace`).addClass("hidden");
         $(`#${this.id}AddDialog`).removeClass("hidden");
-        $(`#${this.id}DialogLocation`).html(global.mMenu.getUserDialogsPath().replace('dialogs.json', ''));
+        $(`#${this.id}DialogLocation`).html(global.mMenu.mPlaceDir);
     }
 
     onHide() {
@@ -1067,14 +1067,14 @@ class Marketplace {
 
     onCreateMarketplace() {
         const marketplaceData = store.get('market', {markets: []});
-        const gitUrl = $(`#${this.id}GitUrl`).val();
-        const userHasDialogsPath = global.mMenu.getUserDialogsPath(marketplaceData);
+        // const gitUrl = $(`#${this.id}GitUrl`).val();
+        const userHasDialogsPath = global.mMenu.getUserDialogsPath();
 
-        if (!userHasDialogsPath && gitUrl === "") {
+        // if (!userHasDialogsPath && gitUrl === "") {
             this._createFileBasedMarketplace(marketplaceData);
-        } else if (gitUrl) {
-            this._createGitBasedMarketplace(marketplaceData);
-        }
+        // } else if (gitUrl) {
+        //     this._createGitBasedMarketplace(marketplaceData);
+        // }
     }
 
     _createFileBasedMarketplace(marketplaceData) {
@@ -1083,8 +1083,9 @@ class Marketplace {
 
         try {
             const marketEntry = MarketplaceFactory.createFileBasedMarketplace(marketplaceData, folderPath);
-            this._updateMarketplaceConfig(marketplaceData);
-            this._refreshMarketplace();
+            global.mMenu.mPlacePath = marketEntry.path;
+            // this._updateMarketplaceConfig(marketplaceData);
+            // this._refreshMarketplace();
             this._showDialogManagement();
         } catch (error) {
             console.error('Error creating file marketplace:', error);
@@ -1092,6 +1093,8 @@ class Marketplace {
     }
 
     _createGitBasedMarketplace(marketplaceData) {
+        console.warn('Deprecated or not used')
+        return;
         const folderPath = this._selectFolder('Select path for git dialogs');
         if (!folderPath) return;
 
@@ -1105,7 +1108,7 @@ class Marketplace {
 
         try {
             const marketEntry = MarketplaceFactory.createGitBasedMarketplace(marketplaceData, folderPath, gitConfig);
-            this._updateMarketplaceConfig(marketplaceData);
+            // this._updateMarketplaceConfig(marketplaceData);
             gitClone(marketEntry);
         } catch (error) {
             console.error('Error creating git marketplace:', error);
@@ -1123,16 +1126,16 @@ class Marketplace {
         return selectedFolders ? selectedFolders[0].replace("file://", "") : null;
     }
 
-    _updateMarketplaceConfig(marketplaceData) {
-        // const marketplaceConfigPath = store.get("mplacepath");
-        const marketplaceConfigPath = global.mMenu.mPlacePath
-        fs.writeFileSync(marketplaceConfigPath, JSON.stringify(marketplaceData));
-    }
+    // _updateMarketplaceConfig(marketplaceData) {
+    //     // const marketplaceConfigPath = store.get("mplacepath");
+    //     const marketplaceConfigPath = global.mMenu.mPlacePath
+    //     fs.writeFileSync(marketplaceConfigPath, JSON.stringify(marketplaceData));
+    // }
 
-    _refreshMarketplace() {
-        global.mMenu.reloadMarketFromFile();
+    // _refreshMarketplace() {
+        // global.mMenu.reloadMarketFromFile();
         // global.mMenu.compileNonBaseDialogs();
-    }
+    // }
 
     onSave() {
         const saveButton = $(`#${this.id}Save`);

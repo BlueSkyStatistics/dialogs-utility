@@ -118,7 +118,7 @@ function checkForSearch() {
 }
 
 global.openDialogsFolder = () => {
-    global.mMenu.openUserDialogsFolder(global.mMenu.getUserDialogsPath().replace('dialogs.json', ''))
+    global.mMenu.openUserDialogsFolder(global.mMenu.mPlaceDir)
 }
 
 function uploadDialog() {
@@ -148,7 +148,7 @@ function uploadDialog() {
         dialog.showErrorBox("Dialog Error", "Dialog you trying to ingest already exists, please change dialog ID, or remove existing dialog")
         return 1
     }
-    const dialogsDir = global.mMenu.getUserDialogsPath().replace('dialogs.json', '')
+    const dialogsDir = global.mMenu.mPlaceDir
     if (!dialogsDir) {
         dialog.showErrorBox("Dialog Error", "No dialogs directory found, please restart app and specify market dialog directory")
         return 1
