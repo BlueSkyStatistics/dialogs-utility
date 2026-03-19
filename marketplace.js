@@ -634,73 +634,42 @@ MarketplaceActionHandler.getInstance()
 // === DATA PROVIDER ===
 class MarketplaceDataProvider {
     constructor() {
-        this.providers = {
-            file: this.fileProvider.bind(this),
-            git: this.gitProvider.bind(this)
-        };
+        // this.providers = {
+        //     file: this.fileProvider.bind(this),
+        //     git: this.gitProvider.bind(this)
+        // };
     }
 
     fileProvider(market) {
+        const marketPath = typeof market === 'object' ? market.path : market;
+
         try {
-            const paths = [market.path, `./${market.path}`, path.join(__dirname.replace("app.asar", ""), market.path)];
+            const paths = [marketPath, `./${marketPath}`, path.join(sessionStore.get("appPath", ''), marketPath)];
 
             for (const marketPath of paths) {
                 try {
-                    return JSON.parse(fs.readFileSync(marketPath)).menu;
+                    const marketData = JSON.parse(fs.readFileSync(marketPath))
+                    return {_path: marketPath, menu: marketData.menu}
                 } catch (error) {
                     continue;
                 }
             }
-            return [];
+            return {};
         } catch (error) {
             console.error('Error in file provider:', error);
-            return [];
+            return {};
         }
     }
 
-    gitProvider(market) {
-        return gitClone(market);
-    }
+    // gitProvider(market) {
+    //     return gitClone(market);
+    // }
 
-    getProvider(type) {
-        return this.providers[type];
-    }
+    // getProvider(type) {
+    //     return this.providers[type];
+    // }
 }
 
-// === MARKETPLACE FACTORY ===
-class MarketplaceFactory {
-    static createFileBasedMarketplace(marketplaceData, folderPath) {
-        const marketPath = path.join(folderPath, 'dialogs.json');
-        const marketEntry = {
-            name: 'User dialogs',
-            path: marketPath,
-            provider: 'file'
-        };
-
-        fs.writeFileSync(marketPath, JSON.stringify(DEFAULT_MENU_STRUCTURE));
-        marketplaceData.markets.push(marketEntry);
-
-        return marketEntry;
-    }
-
-    static createGitBasedMarketplace(marketplaceData, folderPath, gitConfig) {
-        const marketPath = path.join(folderPath, 'dialogs.json');
-        const marketEntry = {
-            name: 'Git dialogs',
-            path: marketPath,
-            provider: 'git',
-            repo: gitConfig.url,
-            branch: gitConfig.branch
-        };
-
-        if (gitConfig.username) marketEntry.username = gitConfig.username;
-        if (gitConfig.password) marketEntry.password = gitConfig.password;
-        if (gitConfig.ssh_key) marketEntry.ssh_key = gitConfig.ssh_key;
-
-        marketplaceData.markets.push(marketEntry);
-        return marketEntry;
-    }
-}
 
 // === MAIN MARKETPLACE CLASS ===
 class Marketplace {
@@ -754,12 +723,20 @@ class Marketplace {
         return flattened;
     }
 
+    get markets() {
+        const markets = ['./dialogs.json']
+        const customDialogsPath = global.mMenu.mPlacePath
+        if (customDialogsPath) { markets.push(customDialogsPath); }
+        return markets;
+    }
+
     mergeMarkets() {
         console.log('mergeMarkets');
         // const mainMenu = store.get('main', {}).menu
         const mainMenu = global.mMenu.main.menu
         const menuList = mainMenu.map(item => item.name);
-        const markets = store.get('market', {markets: []}).markets;
+        // const markets = store.get('market', {markets: []}).markets;
+        const markets = this.markets;
         const totalInstalled = [];
         const notInstalled = [];
         const marketToDialog = {};
@@ -773,9 +750,8 @@ class Marketplace {
         }
 
         markets.forEach(market => {
-            const provider = this.dataProvider.getProvider(market.provider);
-            const marketData = provider(market);
-            const tmpPath = path.dirname(market.path)
+            const {_path: marketPath, menu: marketData} = this.dataProvider.fileProvider(market)
+            const tmpPath = path.dirname(market)
 
             marketData.forEach(marketItem => {
                 const menuIndex = menuList.indexOf(marketItem.name)
@@ -1024,7 +1000,7 @@ class Marketplace {
     }
 
     onShow() {
-        console.log('Marketplace onShow');
+        console.debug('Marketplace onShow');
         ipcRenderer.invoke('logEvent', {category: "dialog", action: "show", title: "marketplace"});
         this._handleModalConflicts();
         this._configureMarketplaceDisplay();
@@ -1066,12 +1042,12 @@ class Marketplace {
     }
 
     onCreateMarketplace() {
-        const marketplaceData = store.get('market', {markets: []});
+        const markets = this.markets
         // const gitUrl = $(`#${this.id}GitUrl`).val();
-        const userHasDialogsPath = global.mMenu.getUserDialogsPath();
+        // const userHasDialogsPath = global.mMenu.getUserDialogsPath();
 
         // if (!userHasDialogsPath && gitUrl === "") {
-            this._createFileBasedMarketplace(marketplaceData);
+            this._createFileBasedMarketplace(markets);
         // } else if (gitUrl) {
         //     this._createGitBasedMarketplace(marketplaceData);
         // }
@@ -1082,8 +1058,9 @@ class Marketplace {
         if (!folderPath) return;
 
         try {
-            const marketEntry = MarketplaceFactory.createFileBasedMarketplace(marketplaceData, folderPath);
-            global.mMenu.mPlacePath = marketEntry.path;
+            const marketPath = path.join(folderPath, 'dialogs.json');
+            fs.writeFileSync(marketPath, JSON.stringify(DEFAULT_MENU_STRUCTURE));
+            global.mMenu.mPlacePath = marketPath
             // this._updateMarketplaceConfig(marketplaceData);
             // this._refreshMarketplace();
             this._showDialogManagement();
@@ -1092,28 +1069,28 @@ class Marketplace {
         }
     }
 
-    _createGitBasedMarketplace(marketplaceData) {
-        console.warn('Deprecated or not used')
-        return;
-        const folderPath = this._selectFolder('Select path for git dialogs');
-        if (!folderPath) return;
-
-        const gitConfig = {
-            url: $(`#${this.id}GitUrl`).val(),
-            branch: $(`#${this.id}GitBranch`).val(),
-            username: $(`#${this.id}GitUser`).val(),
-            password: $(`#${this.id}GitPwd`).val(),
-            ssh_key: $(`#${this.id}GitKey`).val()
-        };
-
-        try {
-            const marketEntry = MarketplaceFactory.createGitBasedMarketplace(marketplaceData, folderPath, gitConfig);
-            // this._updateMarketplaceConfig(marketplaceData);
-            gitClone(marketEntry);
-        } catch (error) {
-            console.error('Error creating git marketplace:', error);
-        }
-    }
+    // _createGitBasedMarketplace(marketplaceData) {
+    //     console.warn('Deprecated or not used')
+    //     return;
+    //     const folderPath = this._selectFolder('Select path for git dialogs');
+    //     if (!folderPath) return;
+    //
+    //     const gitConfig = {
+    //         url: $(`#${this.id}GitUrl`).val(),
+    //         branch: $(`#${this.id}GitBranch`).val(),
+    //         username: $(`#${this.id}GitUser`).val(),
+    //         password: $(`#${this.id}GitPwd`).val(),
+    //         ssh_key: $(`#${this.id}GitKey`).val()
+    //     };
+    //
+    //     try {
+    //         const marketEntry = MarketplaceFactory.createGitBasedMarketplace(marketplaceData, folderPath, gitConfig);
+    //         // this._updateMarketplaceConfig(marketplaceData);
+    //         gitClone(marketEntry);
+    //     } catch (error) {
+    //         console.error('Error creating git marketplace:', error);
+    //     }
+    // }
 
     _selectFolder(title) {
         const selectedFolders = dialog.showOpenDialogSync(
