@@ -27,10 +27,15 @@ BSkyLoadRpkgDataset(datasetname =BSkyGetDatasetNameFromPackageDatasetList("{{sel
 BSkyLoadRefresh(BSkyGetDatasetNameFromPackageDatasetList("{{selected.selectADataset | safe}}"))
 
             `,
-            pre_start_r: JSON.stringify({
+           /*  pre_start_r: JSON.stringify({
                 selectAPackage:"c('All_Installed_Packages',installed.packages()[,1])",
-                selectADataset: "BSkyGetDatasetNameTitle()",
+                selectADataset: "BSkyGetDatasetNameTitle ()",
+            }) */
+            pre_start_js: JSON.stringify({
+                selectAPackage:"all_packages",
+                selectADataset: "all_datasets",
             })
+
         }
         var objects = {
           
@@ -43,7 +48,7 @@ BSkyLoadRefresh(BSkyGetDatasetNameFromPackageDatasetList("{{selected.selectAData
                     extraction: "NoPrefix|UseComma",
                     options: [],
                     default: "",
-                    onselect_r: {selectADataset: "BSkyGetDatasetNameTitle(package = c('{{value}}'))"}
+                    onselect_js: {selectADataset: "getDatasetsFromSelectedPackage"}
                     
                 })
             },
@@ -68,7 +73,8 @@ BSkyLoadRefresh(BSkyGetDatasetNameFromPackageDatasetList("{{selected.selectAData
                 name: loadDatasetFromPackage.t('navigation'),
                 icon: "icon-package_install",
                 positionInNav: 1,
-                onclick: `r_before_modal('${config.id}')`,
+                //onclick: `r_before_modal('${config.id}')`,
+                onclick: `js_before_modal('${config.id}')`,
                 modal_id: config.id
             }
         }
