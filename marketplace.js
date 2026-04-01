@@ -735,7 +735,6 @@ class Marketplace {
         // const mainMenu = store.get('main', {}).menu
         const mainMenu = global.mMenu.main.menu
         const menuList = mainMenu.map(item => item.name);
-        // const markets = store.get('market', {markets: []}).markets;
         const markets = this.markets;
         const totalInstalled = [];
         const notInstalled = [];
@@ -1122,7 +1121,6 @@ class Marketplace {
         try {
             const result = uploadDialog();
             if (typeof result === 'object') {
-                this._updateUserDialogs(result);
                 this._handleSuccessfulUpload(result);
             }
         } catch (error) {
@@ -1176,13 +1174,6 @@ class Marketplace {
                 }
             }
         }, 300);
-    }
-
-    _updateUserDialogs(result) {
-        // store.delete("nonBaseDialogs");
-        console.log('_updateUserDialogs', result)
-        this.userDialogs.push(result['import']);
-        // store.set("nonBaseDialogs", userDialogs);
     }
 
     compile() {
