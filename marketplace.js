@@ -24,22 +24,22 @@ const MARKETPLACE_CONFIG = {
     LABEL: "Dialog Marketplace",
 };
 
-const DEFAULT_MENU_STRUCTURE = {
-    "menu": [
-        {"name": "Datasets", "tab": "Datasets", "buttons": []},
-        {"name": "Variables", "tab": "Variables", "buttons": []},
-        {"name": "Analysis", "tab": "analysis", "buttons": []},
-        {"name": "Distribution", "tab": "distribution", "buttons": []},
-        {"name": "Graphics", "tab": "graphics", "buttons": []},
-        {"name": "DoE", "tab": "DoE", "buttons": []},
-        {"name": "Six Sigma", "tab": "six_sigma", "buttons": []},
-        {"name": "Model Fitting", "tab": "model_fitting", "buttons": []},
-        {"name": "Model Tuning", "tab": "model_tuning", "buttons": []},
-        {"name": "Model Evaluation", "tab": "model_statistics", "buttons": []},
-        {"name": "Forecasting", "tab": "forecasting", "buttons": []},
-        {"name": "Agreement", "tab": "agreement", "buttons": []}
-    ]
-};
+// const DEFAULT_MENU_STRUCTURE = {
+//     "menu": [
+//         {"name": "Datasets", "tab": "Datasets", "buttons": []},
+//         {"name": "Variables", "tab": "Variables", "buttons": []},
+//         {"name": "Analysis", "tab": "analysis", "buttons": []},
+//         {"name": "Distribution", "tab": "distribution", "buttons": []},
+//         {"name": "Graphics", "tab": "graphics", "buttons": []},
+//         {"name": "DoE", "tab": "DoE", "buttons": []},
+//         {"name": "Six Sigma", "tab": "six_sigma", "buttons": []},
+//         {"name": "Model Fitting", "tab": "model_fitting", "buttons": []},
+//         {"name": "Model Tuning", "tab": "model_tuning", "buttons": []},
+//         {"name": "Model Evaluation", "tab": "model_statistics", "buttons": []},
+//         {"name": "Forecasting", "tab": "forecasting", "buttons": []},
+//         {"name": "Agreement", "tab": "agreement", "buttons": []}
+//     ]
+// };
 
 
 // === TEMPLATE RENDERER ===
@@ -709,17 +709,17 @@ class Marketplace {
         };
     }
 
-    flattenMenu(menu) {
-        const flattened = [];
-        for (const button of menu.buttons) {
-            if (typeof button === "object" && button.children !== undefined) {
-                flattened.push(...button.children);
-            } else {
-                flattened.push(button);
-            }
-        }
-        return flattened;
-    }
+    // flattenMenu(menu) {
+    //     const flattened = [];
+    //     for (const button of menu.buttons) {
+    //         if (typeof button === "object" && button.children !== undefined) {
+    //             flattened.push(...button.children);
+    //         } else {
+    //             flattened.push(button);
+    //         }
+    //     }
+    //     return flattened;
+    // }
 
     // getMarkets() {
     //     const markets = []
@@ -800,9 +800,10 @@ class Marketplace {
 
     renderContent() {
         // Initialize dialog tree for debugging
-        global.dialogTree = global.dialogTree || new Set();
+        // global.dialogTree = global.dialogTree || new Set();
 
-        this._resetState();
+        // this._resetState();
+
         // const {mainMenu, not_installed: notInstalled, market_to_dialog: marketToDialog} = this.mergeMarkets();
 
         // this.notInstalled = notInstalled;
@@ -811,19 +812,19 @@ class Marketplace {
         // this._processChapters(mainMenu);
         // _processChapters(mainMenu) {
 
-            global.mMenu.mainMenu.forEach(chapter => {
-                if (chapter.id !== 'menu-file' && chapter.id !== 'menu-tools') {
-                    // this._addChapter(chapter);
-                    const chapterLabel = i18next.t(`menu.${chapter.id}`)
-                    this.chapters.push(this.templateRenderer.renderChapter(
-                        chapter.id,
-                        chapterLabel
-                    ));
-                    this.dropitems.push(chapterLabel)
+            global.mMenu.mainMenu.filter(i =>
+                i.id !== 'menu-file' && i.id !== 'menu-tools'
+            ).forEach(chapter => {
+                // this._addChapter(chapter);
+                const chapterLabel = i18next.t(chapter.id, {ns: 'menu'})
+                this.chapters.push(this.templateRenderer.renderChapter(
+                    chapter.id,
+                    chapterLabel
+                ));
+                this.dropitems.push(chapterLabel)
 
-                    const cards = this._processChapterButtons(chapter);
-                    this._addTab(chapter, cards);
-                }
+                const cards = this._processChapterButtons(chapter);
+                this._addTab(chapter, cards);
             });
         // }
 
@@ -898,7 +899,7 @@ class Marketplace {
     _createDialogCard(button, chapter) {
         return this.templateRenderer.renderCard({
             dialog: button,
-            chapter: chapter.name
+            chapter: chapter.id
         });
     }
 
@@ -911,16 +912,17 @@ class Marketplace {
 
         // const isHidden = hiddenObjects.includes(fixedChild);
         const isHidden = hiddenDialogs.has(child.id);
+        const chapterLabel = i18next.t(chapter.id, {ns: 'menu'})
         try {
             // const dialog = getDialog(child.path);
             // this._addToDialogTree(chapter, dialog);
             return this.templateRenderer.renderCard({
-                dialog: dialog.nav,
-                chapter: chapter.name,
-                uninstall: visibility.uninstall,
-                install: visibility.install,
+                dialog: child.resolvedDialog.nav,
+                chapter: chapterLabel,
+                // uninstall: visibility.uninstall,
+                // install: visibility.install,
                 installed: false,
-                child: fixedChild,
+                child: child.id,
                 hidden: isHidden
             });
         } catch (error) {
@@ -1013,16 +1015,16 @@ class Marketplace {
         return modules;
     }
 
-    _writeDebugInfo() {
-        if (global.dialogTree) {
-            try {
-                const dialogTreePath = path.join(sessionStore.get('userData'), 'dialogTree.json');
-                fs.writeFileSync(dialogTreePath, JSON.stringify(Array.from(global.dialogTree.values()), null, 2));
-            } catch (error) {
-                console.error('Error writing dialog tree:', error);
-            }
-        }
-    }
+    // _writeDebugInfo() {
+    //     if (global.dialogTree) {
+    //         try {
+    //             const dialogTreePath = path.join(sessionStore.get('userData'), 'dialogTree.json');
+    //             fs.writeFileSync(dialogTreePath, JSON.stringify(Array.from(global.dialogTree.values()), null, 2));
+    //         } catch (error) {
+    //             console.error('Error writing dialog tree:', error);
+    //         }
+    //     }
+    // }
 
     _renderFinalTemplate(modules) {
         return this.templateRenderer.renderModal(this.id, this.label, this.chapters, this.tabs, modules);
@@ -1030,7 +1032,7 @@ class Marketplace {
 
     onShow() {
         console.debug('Marketplace onShow');
-        ipcRenderer.invoke('logEvent', {category: "dialog", action: "show", title: "marketplace"});
+        // ipcRenderer.invoke('logEvent', {category: "dialog", action: "show", title: "marketplace"});
         this._handleModalConflicts();
         this._configureMarketplaceDisplay();
     }
@@ -1209,7 +1211,7 @@ class Marketplace {
     compile() {
         console.log('Compile marketplace');
         return {
-            modal: this.renderContent(),
+            modal: this.renderContent.bind(this),
             id: this.id,
             onshow: this.onShow.bind(this),
             onhide: this.onHide.bind(this),
