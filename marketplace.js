@@ -8,6 +8,7 @@ const path = require('path');
 const fs = require('fs');
 const Store = require('electron-store').default;
 const hiddenStore = new Store({name: 'hideconfig'});
+const i18next = require('i18next');
 
 const {
     refreshDialog, deleteDialog,
@@ -15,33 +16,30 @@ const {
     uploadDialog, searchDialog, checkForSearch,
 } = require('./marketUtils.js');
 const {dialog, getCurrentWindow} = require("@electron/remote");
-const store = global.store;
 
 
 // === CONSTANTS ===
 const MARKETPLACE_CONFIG = {
     ID: "marketplace",
     LABEL: "Dialog Marketplace",
-    DEFAULT_ROWS: 80,
-    DEFAULT_COLS: 15
 };
 
-const DEFAULT_MENU_STRUCTURE = {
-    "menu": [
-        {"name": "Datasets", "tab": "Datasets", "buttons": []},
-        {"name": "Variables", "tab": "Variables", "buttons": []},
-        {"name": "Analysis", "tab": "analysis", "buttons": []},
-        {"name": "Distribution", "tab": "distribution", "buttons": []},
-        {"name": "Graphics", "tab": "graphics", "buttons": []},
-        {"name": "DoE", "tab": "DoE", "buttons": []},
-        {"name": "Six Sigma", "tab": "six_sigma", "buttons": []},
-        {"name": "Model Fitting", "tab": "model_fitting", "buttons": []},
-        {"name": "Model Tuning", "tab": "model_tuning", "buttons": []},
-        {"name": "Model Evaluation", "tab": "model_statistics", "buttons": []},
-        {"name": "Forecasting", "tab": "forecasting", "buttons": []},
-        {"name": "Agreement", "tab": "agreement", "buttons": []}
-    ]
-};
+// const DEFAULT_MENU_STRUCTURE = {
+//     "menu": [
+//         {"name": "Datasets", "tab": "Datasets", "buttons": []},
+//         {"name": "Variables", "tab": "Variables", "buttons": []},
+//         {"name": "Analysis", "tab": "analysis", "buttons": []},
+//         {"name": "Distribution", "tab": "distribution", "buttons": []},
+//         {"name": "Graphics", "tab": "graphics", "buttons": []},
+//         {"name": "DoE", "tab": "DoE", "buttons": []},
+//         {"name": "Six Sigma", "tab": "six_sigma", "buttons": []},
+//         {"name": "Model Fitting", "tab": "model_fitting", "buttons": []},
+//         {"name": "Model Tuning", "tab": "model_tuning", "buttons": []},
+//         {"name": "Model Evaluation", "tab": "model_statistics", "buttons": []},
+//         {"name": "Forecasting", "tab": "forecasting", "buttons": []},
+//         {"name": "Agreement", "tab": "agreement", "buttons": []}
+//     ]
+// };
 
 
 // === TEMPLATE RENDERER ===
@@ -632,43 +630,43 @@ class MarketplaceActionHandler {
 MarketplaceActionHandler.getInstance()
 
 // === DATA PROVIDER ===
-class MarketplaceDataProvider {
-    constructor() {
-        // this.providers = {
-        //     file: this.fileProvider.bind(this),
-        //     git: this.gitProvider.bind(this)
-        // };
-    }
-
-    fileProvider(market) {
-        const marketPath = typeof market === 'object' ? market.path : market;
-
-        try {
-            const paths = [marketPath, `./${marketPath}`, path.join(sessionStore.get("appPath", ''), marketPath)];
-
-            for (const marketPath of paths) {
-                try {
-                    const marketData = JSON.parse(fs.readFileSync(marketPath))
-                    return {_path: marketPath, menu: marketData.menu}
-                } catch (error) {
-                    continue;
-                }
-            }
-            return {};
-        } catch (error) {
-            console.error('Error in file provider:', error);
-            return {};
-        }
-    }
-
-    // gitProvider(market) {
-    //     return gitClone(market);
-    // }
-
-    // getProvider(type) {
-    //     return this.providers[type];
-    // }
-}
+// class MarketplaceDataProvider {
+//     // constructor() {
+//         // this.providers = {
+//         //     file: this.fileProvider.bind(this),
+//         //     git: this.gitProvider.bind(this)
+//         // };
+//     // }
+//
+//     // fileProvider(market) {
+//     //     const marketPath = typeof market === 'object' ? market.path : market;
+//     //
+//     //     try {
+//     //         const paths = [marketPath, `./${marketPath}`, path.join(sessionStore.get("appPath", ''), marketPath)];
+//     //
+//     //         for (const marketPath of paths) {
+//     //             try {
+//     //                 const marketData = JSON.parse(fs.readFileSync(marketPath))
+//     //                 return {_path: marketPath, menu: marketData.menu}
+//     //             } catch (error) {
+//     //                 continue;
+//     //             }
+//     //         }
+//     //         return {};
+//     //     } catch (error) {
+//     //         console.error('Error in file provider:', error);
+//     //         return {};
+//     //     }
+//     // }
+//
+//     // gitProvider(market) {
+//     //     return gitClone(market);
+//     // }
+//
+//     // getProvider(type) {
+//     //     return this.providers[type];
+//     // }
+// }
 
 
 // === MAIN MARKETPLACE CLASS ===
@@ -684,7 +682,7 @@ class Marketplace {
         this.templateRenderer = new TemplateRenderer();
         this.actionHandler = global.marketplaceActionHandler;
         this.actionHandler.marketplace = this;
-        this.dataProvider = new MarketplaceDataProvider();
+        // this.dataProvider = new MarketplaceDataProvider();
 
         this.help = this._createHelpConfig();
         this.customDialogs = this._scanCustomDialogs();
@@ -711,98 +709,129 @@ class Marketplace {
         };
     }
 
-    flattenMenu(menu) {
-        const flattened = [];
-        for (const button of menu.buttons) {
-            if (typeof button === "object" && button.children !== undefined) {
-                flattened.push(...button.children);
-            } else {
-                flattened.push(button);
-            }
-        }
-        return flattened;
-    }
+    // flattenMenu(menu) {
+    //     const flattened = [];
+    //     for (const button of menu.buttons) {
+    //         if (typeof button === "object" && button.children !== undefined) {
+    //             flattened.push(...button.children);
+    //         } else {
+    //             flattened.push(button);
+    //         }
+    //     }
+    //     return flattened;
+    // }
 
-    get markets() {
-        const markets = ['./dialogs.json']
-        const customDialogsPath = global.mMenu.mPlacePath
-        if (customDialogsPath) { markets.push(customDialogsPath); }
-        return markets;
-    }
+    // getMarkets() {
+    //     const markets = []
+    //     const customDialogsPath = global.mMenu.mPlacePath
+    //     if (customDialogsPath) { markets.push(customDialogsPath); }
+    //     return markets;
+    // }
 
-    mergeMarkets() {
-        console.log('mergeMarkets');
-        // const mainMenu = store.get('main', {}).menu
-        const mainMenu = global.mMenu.main.menu
-        const menuList = mainMenu.map(item => item.name);
-        const markets = this.markets;
-        const totalInstalled = [];
-        const notInstalled = [];
-        const marketToDialog = {};
-        const getDiff = (menuFromMarket) => {
-            return menuFromMarket.filter(n => {
-                if (typeof n === 'string') {
-                    return !totalInstalled.includes(n)
-                }
-                return totalInstalled.findIndex(i => i.name === n.name) === -1
-            });
-        }
+    // get markets() {
+    //     return this.getMarkets();
+    // }
 
-        markets.forEach(market => {
-            const {_path: marketPath, menu: marketData} = this.dataProvider.fileProvider(market)
-            const tmpPath = path.dirname(market)
-
-            marketData.forEach(marketItem => {
-                const menuIndex = menuList.indexOf(marketItem.name)
-                const menuFromMarket = this.flattenMenu(marketItem)
-
-                if (menuIndex > -1) {
-                    const installedMenu = this.flattenMenu(mainMenu[menuIndex])
-                    totalInstalled.push(...installedMenu)
-                    const diff = getDiff(menuFromMarket)
-                    mainMenu[menuIndex].buttons.push(...diff)
-                    notInstalled.push(...diff)
-                } else {
-                    mainMenu.push(marketItem)
-                    const diff = getDiff(menuFromMarket)
-                    notInstalled.push(...diff)
-                }
-
-                menuFromMarket.forEach(menuName => {
-                    if (typeof menuName === 'object') {
-                        marketToDialog[`INTERNAL::${menuName.name}`] = tmpPath
-                    } else {
-                        marketToDialog[menuName] = tmpPath
-                    }
-
-                });
-            });
-        });
-
-        const hiddenObjects = this.actionHandler.hiddenStore.get('hiddenMenuObjects', []);
-        const uniqueNotInstalled = [...new Set([...notInstalled, ...hiddenObjects])];
-
-        return {
-            mainMenu: mainMenu,
-            not_installed: uniqueNotInstalled,
-            market_to_dialog: marketToDialog
-        };
-    }
+    // mergeMarkets() {
+    //     console.log('mergeMarkets');
+    //     // const mainMenu = store.get('main', {}).menu
+    //     // const mainMenu = global.mMenu.mainMenu
+    //     const menuList = global.mMenu.mainMenu.map(item => item.id);
+    //
+    //     // const markets = this.getMarkets();
+    //     const totalInstalled = [];
+    //     const notInstalled = [];
+    //     const marketToDialog = {};
+    //     const getDiff = (menuFromMarket) => {
+    //         return menuFromMarket.filter(n => {
+    //             if (typeof n === 'string') {
+    //                 return !totalInstalled.includes(n)
+    //             }
+    //             return totalInstalled.findIndex(i => i.id === n.id) === -1
+    //         });
+    //     }
+    //     if (global.mMenu.mPlacePath) {
+    //         this.customMenu = new Menu({
+    //             dialogsJsonPath: global.mMenu.mPlacePath
+    //         });
+    //
+    //     }
+    //
+    //     markets.forEach(market => {
+    //         // const {_path: marketPath, menu: marketData} = this.dataProvider.fileProvider(market)
+    //         const tmpPath = path.dirname(market)
+    //
+    //         marketData.forEach(marketItem => {
+    //             const menuIndex = menuList.indexOf(marketItem.id)
+    //             // const menuFromMarket = this.flattenMenu(marketItem)
+    //
+    //             if (menuIndex > -1) {
+    //                 // const installedMenu = this.flattenMenu(mainMenu[menuIndex])
+    //                 totalInstalled.push(...installedMenu)
+    //                 const diff = getDiff(marketItem)
+    //                 // mainMenu[menuIndex].buttons.push(...diff)
+    //                 notInstalled.push(...diff)
+    //             } else {
+    //                 mainMenu.push(marketItem)
+    //                 const diff = getDiff(menuFromMarket)
+    //                 notInstalled.push(...diff)
+    //             }
+    //
+    //             menuFromMarket.forEach(menuName => {
+    //                 if (typeof menuName === 'object') {
+    //                     marketToDialog[`INTERNAL::${menuName.name}`] = tmpPath
+    //                 } else {
+    //                     marketToDialog[menuName] = tmpPath
+    //                 }
+    //
+    //             });
+    //         });
+    //     });
+    //
+    //     const hiddenObjects = this.actionHandler.hiddenStore.get('hiddenMenuObjects', []);
+    //     const uniqueNotInstalled = [...new Set([...notInstalled, ...hiddenObjects])];
+    //
+    //     return {
+    //         mainMenu: mainMenu,
+    //         not_installed: uniqueNotInstalled,
+    //         market_to_dialog: marketToDialog
+    //     };
+    // }
 
     renderContent() {
         // Initialize dialog tree for debugging
-        global.dialogTree = global.dialogTree || new Set();
+        // global.dialogTree = global.dialogTree || new Set();
 
-        this._resetState();
-        const {mainMenu, not_installed: notInstalled, market_to_dialog: marketToDialog} = this.mergeMarkets();
+        // this._resetState();
 
-        this.notInstalled = notInstalled;
-        this.marketToDialog = marketToDialog;
+        // const {mainMenu, not_installed: notInstalled, market_to_dialog: marketToDialog} = this.mergeMarkets();
 
-        this._processChapters(mainMenu);
+        // this.notInstalled = notInstalled;
+        // this.marketToDialog = marketToDialog;
+
+        // this._processChapters(mainMenu);
+        // _processChapters(mainMenu) {
+
+            global.mMenu.mainMenu.filter(i =>
+                i.id !== 'menu-file' && i.id !== 'menu-tools'
+            ).forEach(chapter => {
+                // this._addChapter(chapter);
+                const chapterLabel = i18next.t(chapter.id, {ns: 'menu'})
+                this.chapters.push(this.templateRenderer.renderChapter(
+                    chapter.id,
+                    chapterLabel
+                ));
+                this.dropitems.push(chapterLabel)
+
+                const cards = this._processChapterButtons(chapter);
+                this._addTab(chapter, cards);
+            });
+        // }
+
+
         const modules = this._processModules();
         this._addCustomDialogsTab();
-        this._writeDebugInfo();
+        // this._writeDebugInfo();
 
         return this._renderFinalTemplate(modules);
     }
@@ -825,28 +854,29 @@ class Marketplace {
         return sessionStore.get("appRoot", process.cwd());
     }
 
-    _processChapters(mainMenu) {
-
-        mainMenu.forEach(chapter => {
-            if (this._shouldProcessChapter(chapter)) {
-                this._addChapter(chapter);
-                const cards = this._processChapterButtons(chapter);
-                this._addTab(chapter, cards);
-            }
-        });
-    }
-
-    _shouldProcessChapter(chapter) {
-        return chapter.tab !== 'file' && chapter.tab !== 'tools';
-    }
-
-    _addChapter(chapter) {
-        this.chapters.push(this.templateRenderer.renderChapter(
-            chapter.tab.replace(/[^A-Z0-9]/ig, "_"),
-            chapter.name || chapter.tab
-        ));
-        this.dropitems.push(chapter.name || chapter.tab);
-    }
+    // _processChapters(mainMenu) {
+    //
+    //     mainMenu.forEach(chapter => {
+    //         if (this._shouldProcessChapter(chapter)) {
+    //             this._addChapter(chapter);
+    //             const cards = this._processChapterButtons(chapter);
+    //             this._addTab(chapter, cards);
+    //         }
+    //     });
+    // }
+    //
+    // _shouldProcessChapter(chapter) {
+    //     return chapter.id !== 'menu-file' && chapter.id !== 'menu-tools';
+    // }
+    //
+    // _addChapter(chapter) {
+    //     const chapterLabel = i18next.t(`menu.${chapter.id}`)
+    //     this.chapters.push(this.templateRenderer.renderChapter(
+    //         chapter.id,
+    //         chapterLabel
+    //     ));
+    //     this.dropitems.push(chapterLabel);
+    // }
 
     _processChapterButtons(chapter) {
         const cards = [];
@@ -869,24 +899,30 @@ class Marketplace {
     _createDialogCard(button, chapter) {
         return this.templateRenderer.renderCard({
             dialog: button,
-            chapter: chapter.name
+            chapter: chapter.id
         });
     }
 
     _createChildDialogCard(child, chapter) {
-        const visibility = this._calculateVisibility(child);
-        const fixedChild = this._fixPath(child);
-        const hiddenObjects = this.actionHandler.hiddenStore.get('hiddenMenuObjects', []);
-        const isHidden = hiddenObjects.includes(fixedChild);
+        // const visibility = this._calculateVisibility(child.path);
+        // const fixedChild = global.fixPath(child.path);
+        // const fixedChild = child.id
+        // const hiddenObjects = this.actionHandler.hiddenStore.get('hiddenMenuObjects', []);
+        const hiddenDialogs = global.mMenu._getHiddenSet()
+
+        // const isHidden = hiddenObjects.includes(fixedChild);
+        const isHidden = hiddenDialogs.has(child.id);
+        const chapterLabel = i18next.t(chapter.id, {ns: 'menu'})
         try {
-            const dialog = getDialog(child);
-            this._addToDialogTree(chapter, dialog);
+            // const dialog = getDialog(child.path);
+            // this._addToDialogTree(chapter, dialog);
             return this.templateRenderer.renderCard({
-                dialog: dialog.nav,
-                chapter: chapter.name,
-                uninstall: visibility.uninstall,
-                install: visibility.install,
-                child: fixedChild,
+                dialog: child.resolvedDialog.nav,
+                chapter: chapterLabel,
+                // uninstall: visibility.uninstall,
+                // install: visibility.install,
+                installed: false,
+                child: child.id,
                 hidden: isHidden
             });
         } catch (error) {
@@ -897,11 +933,12 @@ class Marketplace {
 
     _createButtonCard(button, chapter) {
         const isUserDialog = this.actionHandler._isUserDialog(button);
-        const visibility = this._calculateVisibility(button);
-        const fixedButton = this._fixPath(button);
+        // const visibility = this._calculateVisibility(button);
+        const fixedButton = global.fixPath(button);
 
         try {
-            const dialog = this._getDialogSafely(button);
+            // const dialog = this._getDialogSafely(button);
+            const dialog = global.mMenu._resolveDialog(button)
             if (dialog) {
                 this._addToDialogTree(chapter, dialog);
                 const options = {
@@ -927,35 +964,30 @@ class Marketplace {
         return '';
     }
 
-    _calculateVisibility(item) {
-        return {
-            install: this.notInstalled.indexOf(item) > -1 ? '' : 'hidden',
-            uninstall: this.notInstalled.indexOf(item) > -1 ? 'hidden' : ''
-        };
-    }
+    // _calculateVisibility(item) {
+    //     return {
+    //         install: this.notInstalled.indexOf(item) > -1 ? '' : 'hidden',
+    //         uninstall: this.notInstalled.indexOf(item) > -1 ? 'hidden' : ''
+    //     };
+    // }
 
-    _fixPath(itemPath) {
-        let fixedPath = (process.platform === 'win32') ? itemPath.replace(/\\/g, "\\\\") : itemPath;
-        return require.resolve(fixedPath);
-    }
-
-    _getDialogSafely(button) {
-        const attempts = [
-            () => getDialog(button),
-            () => getDialog(path.join(this.appPath, button)),
-            () => getDialog(path.join(this.marketToDialog[button], button))
-        ];
-
-        for (const attempt of attempts) {
-            try {
-                return attempt();
-            } catch (error) {
-                continue;
-            }
-        }
-
-        return null;
-    }
+    // _getDialogSafely(button) {
+    //     const attempts = [
+    //         () => getDialog(button),
+    //         () => getDialog(path.join(this.appPath, button)),
+    //         // () => getDialog(path.join(this.marketToDialog[button], button))
+    //     ];
+    //
+    //     for (const attempt of attempts) {
+    //         try {
+    //             return attempt();
+    //         } catch (error) {
+    //             continue;
+    //         }
+    //     }
+    //
+    //     return null;
+    // }
 
     _addToDialogTree(chapter, dialog) {
         if (dialog && global.dialogTree) {
@@ -983,16 +1015,16 @@ class Marketplace {
         return modules;
     }
 
-    _writeDebugInfo() {
-        if (global.dialogTree) {
-            try {
-                const dialogTreePath = path.join(sessionStore.get('userData'), 'dialogTree.json');
-                fs.writeFileSync(dialogTreePath, JSON.stringify(Array.from(global.dialogTree.values()), null, 2));
-            } catch (error) {
-                console.error('Error writing dialog tree:', error);
-            }
-        }
-    }
+    // _writeDebugInfo() {
+    //     if (global.dialogTree) {
+    //         try {
+    //             const dialogTreePath = path.join(sessionStore.get('userData'), 'dialogTree.json');
+    //             fs.writeFileSync(dialogTreePath, JSON.stringify(Array.from(global.dialogTree.values()), null, 2));
+    //         } catch (error) {
+    //             console.error('Error writing dialog tree:', error);
+    //         }
+    //     }
+    // }
 
     _renderFinalTemplate(modules) {
         return this.templateRenderer.renderModal(this.id, this.label, this.chapters, this.tabs, modules);
@@ -1000,17 +1032,17 @@ class Marketplace {
 
     onShow() {
         console.debug('Marketplace onShow');
-        ipcRenderer.invoke('logEvent', {category: "dialog", action: "show", title: "marketplace"});
+        // ipcRenderer.invoke('logEvent', {category: "dialog", action: "show", title: "marketplace"});
         this._handleModalConflicts();
         this._configureMarketplaceDisplay();
     }
 
     _handleModalConflicts() {
-        if ($('.modal:visible').length && $('body').hasClass('modal-open')) {
-            $('.modal:visible').each((index, item) => {
+        const visibleModal = $('.modal:visible')
+        if (visibleModal.length && $('body').hasClass('modal-open')) {
+            visibleModal.each((index, item) => {
                 if (item.id !== this.id) {
-                    $(`#${item.id}`).removeAttr("dataset");
-                    $(`#${item.id}`).modal('hide');
+                    $(`#${item.id}`).removeAttr("dataset").modal('hide');
                 }
             });
         }
@@ -1041,18 +1073,18 @@ class Marketplace {
     }
 
     onCreateMarketplace() {
-        const markets = this.markets
+        // const markets = this.getMarkets()
         // const gitUrl = $(`#${this.id}GitUrl`).val();
         // const userHasDialogsPath = global.mMenu.getUserDialogsPath();
 
         // if (!userHasDialogsPath && gitUrl === "") {
-            this._createFileBasedMarketplace(markets);
+            this._createFileBasedMarketplace();
         // } else if (gitUrl) {
         //     this._createGitBasedMarketplace(marketplaceData);
         // }
     }
 
-    _createFileBasedMarketplace(marketplaceData) {
+    _createFileBasedMarketplace() {
         const folderPath = this._selectFolder('Select path for market dialogs');
         if (!folderPath) return;
 
@@ -1179,7 +1211,7 @@ class Marketplace {
     compile() {
         console.log('Compile marketplace');
         return {
-            modal: this.renderContent(),
+            modal: this.renderContent.bind(this),
             id: this.id,
             onshow: this.onShow.bind(this),
             onhide: this.onHide.bind(this),

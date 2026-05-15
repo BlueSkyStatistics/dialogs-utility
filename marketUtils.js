@@ -117,8 +117,8 @@ function checkForSearch() {
     }
 }
 
-global.openDialogsFolder = () => {
-    global.mMenu.openUserDialogsFolder(global.mMenu.mPlaceDir)
+global.openDialogsFolder = async () => {
+    await global.mMenu.openUserDialogsFolder()
 }
 
 function uploadDialog() {

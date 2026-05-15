@@ -4,19 +4,16 @@
   * allowed without the prior written permission from BlueSky Statistics, LLC.
  */
 
-const {getT} = global.requireFromRoot("localization");
-let t = getT('menutoolbar')
-const nav = () => ({
-    "name": t('utility_File_Menu'),// {ns: 'menutoolbar'}),
-    "tab": "file",
+const nav = {
+    "id": "menu-file",
     "buttons": [
         "./loadDatasetFromPackage",
-        "./marketplace",
+        // "./marketplace",
     ]
-})
+}
 
 module.exports = {
-    // nav: nav(),
-    render: () => nav()
+    nav: nav,
+    render: () => nav
 }
 
