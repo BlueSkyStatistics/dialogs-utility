@@ -8,7 +8,12 @@ const nav = {
     "id": "menu-file",
     "buttons": [
         "./loadDatasetFromPackage",
-        // "./marketplace",
+        {
+            "id": "menuManager",
+            "icon": "fas fa-bars",
+            "path": "./bluesky-marketplace-vanilla/index.js",
+            "onclick": "global.openMenuManager()"
+        }
     ]
 }
 
