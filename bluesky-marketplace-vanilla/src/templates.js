@@ -48,7 +48,7 @@ function renderSectionList(ctx) {
 function renderMenuItemCard(item, sectionId, hidden, ctx) {
     const icon = getItemIcon(item);
     // const label = ctx.t(item.id);
-    const label = global.menuManager.mMenu._getButtonLabel(item)
+    const label = ctx.mMenu._getButtonLabel(item)
     return `<div class="card mb-2 ${hidden ? 'border-secondary' : ''}" style="${hidden ? 'opacity:0.5;' : ''}">
         <div class="card-body d-flex align-items-center py-2 px-3">
             ${icon ? `<i class="${esc(icon)} mr-2"></i>` : ''}
@@ -101,7 +101,7 @@ function renderSectionItems(section, ctx) {
 }
 
 /** Equivalent of CustomMenuCard.jsx */
-function renderCustomMenuCard(item, sectionIds, ctx) {
+function renderCustomMenuCard_old(item, sectionIds, ctx) {
     const {sections, t} = ctx;
     const icon = getItemIcon(item);
     const label = ctx.t(item.id);
@@ -152,14 +152,83 @@ function renderCustomMenuCard(item, sectionIds, ctx) {
     </div>`;
 }
 
+
+function renderCustomMenuCard(item, ctx) {
+    const {sections, t} = ctx;
+
+    const icon = getItemIcon(item);
+    const label = ctx.mMenu._getButtonLabel(item) || item._baseName
+    // const filePath = getItemFilePath(item);
+    // const availableSections = sections.filter((s) => !sectionIds.includes(s.id));
+
+    const installedPills = item.sectionIds.length > 0 ? `<div class="mb-2">
+            ${item.sectionIds.map((sid) => {
+            const section = sections.find((s) => s.id === sid);
+            return `<span class="badge badge-info bg-info text-dark mr-1">
+                    ${esc(section ? getSectionName(section, t) : sid)}
+                    <button type="button" class="btn btn-sm p-0 ml-1" aria-label="Remove"
+                        style="font-size:0.7rem; line-height:1; vertical-align:baseline;"
+                        data-action="remove-from-section" data-section-id="${esc(sid)}" data-item-id="${esc(item.id)}">&times;</button>
+                </span>`;
+        }).join('')}
+        </div>` : ''
+
+    const installControls = `<div class="d-flex align-items-center">
+            <select class="form-control form-control-sm form-select form-select-sm mr-2"
+                data-role="install-select" data-item-id="${esc(item.id)}">
+                <option value="">Install to section…</option>
+                ${sections.filter(s => !item.sectionIds.includes(s.id)).map((s) => `<option value="${esc(s.id)}">${esc(getSectionName(s, t))}</option>`).join('')}
+            </select>
+            <button type="button" class="btn btn-sm btn-outline-primary"
+                data-action="install-to-section" data-item-id="${esc(item.id)}">
+                <i class="fas fa-plus"></i>
+            </button>
+        </div>`
+
+    return `<div class="card mb-2">
+        <div class="card-body py-2 px-3">
+            <div class="d-flex align-items-center mb-2">
+                ${icon ? `<i class="${esc(icon)} mr-2"></i>` : ''}
+                <span class="font-weight-bold fw-semibold flex-grow-1 text-truncate">${esc(label)}</span>
+                <button type="button" class="btn btn-sm btn-outline-danger ml-2" title="Delete custom menu"
+                    data-action="delete-custom-menu" data-item-id="${esc(item.id)}" data-file-path="${esc(item.path || '')}">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+            ${installedPills}
+            ${installControls}
+        </div>
+    </div>`;
+}
+
 /** Equivalent of CustomMenusPanel.jsx */
 function renderCustomMenusPanel(ctx) {
-    const {customMenus} = ctx;
-    if (!customMenus || customMenus.length === 0) {
-        return '<p class="text-muted">No custom menus found.</p>';
-    }
-    return `<div>${customMenus.map(({item, sectionIds}) => renderCustomMenuCard(item, sectionIds, ctx)).join('')}</div>`;
+    const {mMenu, manager, customMenus} = ctx;
+
+    // if (!customMenus || customMenus.length === 0) {
+    // const customDialogs = manager.getCustomDialogs()
+        return `
+        <div id="menuManagerCustomMenusPanel">
+            ${customMenus.length === 0 ? '<p class="text-muted">No custom menus found.</p>' : ''}
+            <label class="form-label">Add path to Marketplace Dialogs</label>
+            <div>
+                <span>${mMenu.mPlaceDir}</span>
+                <button type="button" class="btn btn-upload" onclick="menuManager.setCustomDialogsFolder()">Select Folder</button>  
+            </div>
+            <div>
+                ${customMenus.map(
+                    (i) => renderCustomMenuCard(i, ctx)
+                ).join('')}
+            </div>
+        </div>
+        `;
+    // }
+    // return `<div>${customMenus.map(({item, sectionIds}) => renderCustomMenuCard(item, sectionIds, ctx)).join('')}</div>`;
 }
+
+
+
+
 
 /** Inner body — equivalent of the body of MenuManagerModal.jsx. */
 function renderBody(ctx) {
@@ -186,7 +255,8 @@ function renderBody(ctx) {
         <h6 class="mb-2">Custom Menus</h6>
         <div style="overflow-y:auto;">
             ${renderCustomMenusPanel(ctx)}
-        </div>`;
+        </div>
+        `;
 }
 
 /** Outer modal shell — equivalent of the modal wrapper of MenuManagerModal.jsx. */

@@ -20,7 +20,11 @@
  */
 
 const templates = require('./templates');
-const {collectCustomMenus, flattenItems} = require('./menuUtils');
+const {flattenItems, collectMenus} = require('./menuUtils');
+const fs = require("fs");
+const path = require("path");
+const {dialog, getCurrentWindow} = require("@electron/remote");
+const {default: Store} = require("electron-store");
 
 const MODAL_ID = templates.MODAL_ID;
 const BODY_ID = templates.BODY_ID;
@@ -88,8 +92,10 @@ class MenuManager {
             hiddenSet: this.getHiddenSet(),
             activeSectionId: this.activeSectionId,
             openSubmenuIds: this.openSubmenuIds,
-            customMenus: collectCustomMenus(sections),
+            customMenus: this.collectCustomMenus(),
             t: this.t,
+            mMenu: this.mMenu,
+            manager: this
         };
     }
 
@@ -313,9 +319,10 @@ class MenuManager {
     }
 
     installToSection(sectionId, itemId) {
-        const item = this._findItemById(itemId);
+        const item = this._findItemById(itemId); //todo: do something if this item is not found - means it is a new dialog
         if (item && this.mMenu && typeof this.mMenu.injectTabButton === 'function') {
             this.mMenu.injectTabButton(sectionId, item);
+            // this.store.
         }
         this._markDirty();
         this._refresh();
@@ -374,6 +381,80 @@ class MenuManager {
         g.openMenuManager = () => this.open();
         g.menuManager = this;
         return g;
+    }
+
+
+
+    collectCustomMenus() {
+        const storeData = this.mMenu.customMenu
+        const collected = collectMenus(storeData)
+        const scanned = this.scanCustomDialogFiles()
+        const result = scanned.map(f => {
+            const installedItem = collected.find(i => i.item.path === f.path || i.item._relativePath === f.path)
+            return {...f, ...installedItem?.item, sectionIds: installedItem?.sectionIds || []}
+        })
+        return result
+    }
+
+
+    scanCustomDialogFiles() {
+        const mPlaceDir = this.mMenu.mPlaceDir
+        if (!mPlaceDir) {
+            return []
+        }
+        return fs.readdirSync(mPlaceDir)
+            .filter(f => f.endsWith('.js'))
+            .map(f => {
+                const result = this.mMenu.addIdToDialogItem(
+                    f,
+                    'custom-dialog',
+                    mPlaceDir
+                )
+                result._baseName = path.basename(f, '.js')
+                const iconPath = path.join(mPlaceDir, result._baseName, '.svg')
+                result.icon = fs.existsSync(iconPath) ? iconPath : undefined
+                result.isCustom = true
+                return result
+            });
+    }
+
+    setCustomDialogsFolder = () => {
+        const sessionStore = global.sessionStore
+        const _selectFolder = () =>{
+            const selectedFolders = dialog.showOpenDialogSync(
+                getCurrentWindow(),
+                {
+                    title: 'Select path for market dialogs',
+                    defaultPath: sessionStore.get("HomeDir"),
+                    properties: ['openDirectory', 'createDirectory', 'treatPackageAsDirectory', 'dontAddToRecent'],
+                });
+            return selectedFolders ? selectedFolders[0].replace("file://", "") : null;
+        }
+        const folderPath = _selectFolder();
+        if (!folderPath) return;
+
+        try {
+            // const marketPath = path.join(folderPath, 'dialogs.json');
+            this.mMenu.mPlaceDir = folderPath
+            if (fs.existsSync(this.mMenu.mPlacePath)) {
+                this._markDirty()
+                this._refresh();
+            } else {
+                const menuStructure = this.mMenu.mainMenu.map(({id, icon}) => ({id, icon, buttons: []}))
+                this.store.set('menu', menuStructure)
+                // fs.writeFileSync(marketPath, JSON.stringify(menuStructure));
+            }
+
+
+
+
+
+            // this._updateMarketplaceConfig(marketplaceData);
+            // this._refreshMarketplace();
+            // this._showDialogManagement();
+        } catch (error) {
+            console.error('Error creating file marketplace:', error);
+        }
     }
 }
 

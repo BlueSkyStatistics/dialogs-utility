@@ -48,7 +48,8 @@ function flattenItems(buttons) {
  * Collect all custom menus from all sections.
  * Returns an array of { item, sectionIds[] } objects.
  */
-function collectCustomMenus(sections) {
+function collectMenus(sections) {
+    console.log('TODO: collect menus from store!!');
     const customMap = new Map();
 
     for (const section of sections) {
@@ -75,5 +76,5 @@ module.exports = {
     getSectionName,
     getItemFilePath,
     flattenItems,
-    collectCustomMenus,
+    collectMenus,
 };
