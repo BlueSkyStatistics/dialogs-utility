@@ -38,6 +38,7 @@ function renderSectionList(ctx) {
         ${sections.map((section) => `
             <button type="button"
                 class="list-group-item list-group-item-action ${section.id === activeSectionId ? 'active' : ''}"
+                style="color: var(--bs-light);"
                 data-action="select-section" data-section-id="${esc(section.id)}">
                 ${esc(getSectionName(section, t))}
             </button>`).join('')}
@@ -100,58 +101,6 @@ function renderSectionItems(section, ctx) {
     )).join('')}</div>`;
 }
 
-/** Equivalent of CustomMenuCard.jsx */
-function renderCustomMenuCard_old(item, sectionIds, ctx) {
-    const {sections, t} = ctx;
-    const icon = getItemIcon(item);
-    const label = ctx.t(item.id);
-    const filePath = getItemFilePath(item);
-    const availableSections = sections.filter((s) => !sectionIds.includes(s.id));
-
-    const installedPills = sectionIds.length > 0
-        ? `<div class="mb-2">
-            ${sectionIds.map((sid) => {
-                const section = sections.find((s) => s.id === sid);
-                return `<span class="badge badge-info bg-info text-dark mr-1">
-                    ${esc(section ? getSectionName(section, t) : sid)}
-                    <button type="button" class="btn btn-sm p-0 ml-1" aria-label="Remove"
-                        style="font-size:0.7rem; line-height:1; vertical-align:baseline;"
-                        data-action="remove-from-section" data-section-id="${esc(sid)}" data-item-id="${esc(item.id)}">&times;</button>
-                </span>`;
-            }).join('')}
-        </div>`
-        : '';
-
-    const installControls = availableSections.length > 0
-        ? `<div class="d-flex align-items-center">
-            <select class="form-control form-control-sm form-select form-select-sm mr-2"
-                data-role="install-select" data-item-id="${esc(item.id)}">
-                <option value="">Install to section…</option>
-                ${availableSections.map((s) => `<option value="${esc(s.id)}">${esc(getSectionName(s, t))}</option>`).join('')}
-            </select>
-            <button type="button" class="btn btn-sm btn-outline-primary"
-                data-action="install-to-section" data-item-id="${esc(item.id)}">
-                <i class="fas fa-plus"></i>
-            </button>
-        </div>`
-        : '';
-
-    return `<div class="card mb-2">
-        <div class="card-body py-2 px-3">
-            <div class="d-flex align-items-center mb-2">
-                ${icon ? `<i class="${esc(icon)} mr-2"></i>` : ''}
-                <span class="font-weight-bold fw-semibold flex-grow-1 text-truncate">${esc(label)}</span>
-                <button type="button" class="btn btn-sm btn-outline-danger ml-2" title="Delete custom menu"
-                    data-action="delete-custom-menu" data-item-id="${esc(item.id)}" data-file-path="${esc(filePath || '')}">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
-            ${installedPills}
-            ${installControls}
-        </div>
-    </div>`;
-}
-
 
 function renderCustomMenuCard(item, ctx) {
     const {sections, t} = ctx;
@@ -175,11 +124,12 @@ function renderCustomMenuCard(item, ctx) {
 
     const installControls = `<div class="d-flex align-items-center">
             <select class="form-control form-control-sm form-select form-select-sm mr-2"
+                style="color: var(--dark-gray) !important;"
                 data-role="install-select" data-item-id="${esc(item.id)}">
                 <option value="">Install to section…</option>
                 ${sections.filter(s => !item.sectionIds.includes(s.id)).map((s) => `<option value="${esc(s.id)}">${esc(getSectionName(s, t))}</option>`).join('')}
             </select>
-            <button type="button" class="btn btn-sm btn-outline-primary"
+            <button type="button" class="btn btn-sm btn-primary"
                 data-action="install-to-section" data-item-id="${esc(item.id)}">
                 <i class="fas fa-plus"></i>
             </button>
@@ -190,7 +140,17 @@ function renderCustomMenuCard(item, ctx) {
             <div class="d-flex align-items-center mb-2">
                 ${icon ? `<i class="${esc(icon)} mr-2"></i>` : ''}
                 <span class="font-weight-bold fw-semibold flex-grow-1 text-truncate">${esc(label)}</span>
-                <button type="button" class="btn btn-sm btn-outline-danger ml-2" title="Delete custom menu"
+                ${item.error ? `<i class="fas fa-exclamation-triangle text-warning mr-1 mb-1" role="button" tabindex="0"
+                    data-toggle="tooltip" data-placement="top" data-trigger="focus" title="${esc(item.error?.stack)}">
+                    <span class="sr-only">${esc(item.error?.stack)}</span>
+                </i>` : ''}
+                <button type="button" class="btn btn-sm ml-2" title="Reload dialog" 
+                    data-toggle="tooltip" data-placement="top"
+                    data-action="reload-custom-menu" data-item-id="${esc(item.id)}" data-file-path="${esc(item.path || '')}">
+                    <i class="fas fa-sync"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-danger ml-2" title="Delete custom menu"
+                    data-toggle="tooltip" data-placement="top"
                     data-action="delete-custom-menu" data-item-id="${esc(item.id)}" data-file-path="${esc(item.path || '')}">
                     <i class="fas fa-trash"></i>
                 </button>
@@ -204,6 +164,7 @@ function renderCustomMenuCard(item, ctx) {
 /** Equivalent of CustomMenusPanel.jsx */
 function renderCustomMenusPanel(ctx) {
     const {mMenu, manager, customMenus} = ctx;
+    const mPlaceDir = mMenu.mPlaceDir
 
     // if (!customMenus || customMenus.length === 0) {
     // const customDialogs = manager.getCustomDialogs()
@@ -212,8 +173,10 @@ function renderCustomMenusPanel(ctx) {
             ${customMenus.length === 0 ? '<p class="text-muted">No custom menus found.</p>' : ''}
             <label class="form-label">Add path to Marketplace Dialogs</label>
             <div>
-                <span>${mMenu.mPlaceDir}</span>
-                <button type="button" class="btn btn-upload" onclick="menuManager.setCustomDialogsFolder()">Select Folder</button>  
+                <span>${mPlaceDir}</span>
+                <button type="button" class="btn btn-upload" onclick="menuManager.setCustomDialogsFolder()">Select Folder</button>
+                ${mPlaceDir ? `<button type="button" class="btn btn-secondary" onclick="menuManager.handleRefreshClick()">Refresh</button>` : ''}
+                ${mPlaceDir ? `<button type="button" class="btn btn-secondary" onclick="mMenu.openUserDialogsFolder()">Open Folder</button>` : ''}
             </div>
             <div>
                 ${customMenus.map(

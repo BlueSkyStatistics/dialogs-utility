@@ -46,6 +46,11 @@ class MenuManager {
         this.activeSectionId = null;
         this.openSubmenuIds = new Set();
 
+        // Cache for collectCustomMenus() to avoid repeated work. Call
+        // invalidateCollectMenus() to force a refresh when underlying
+        // data changes.
+        this._collectCustomMenusCache = null;
+
         this._t = null;
         this._bound = false;
         this._dirty = false;
@@ -100,11 +105,8 @@ class MenuManager {
     }
 
     _findItemById(itemId) {
-        for (const section of this.getSections()) {
-            const found = flattenItems(section.buttons || []).find((b) => b.id === itemId);
-            if (found) return found;
-        }
-        return null;
+        const customFiles = this.collectCustomMenus()
+        return customFiles.find(i => i.id === itemId);
     }
 
     // ── menu.js dialog descriptor ─────────────────────────────────────────────
@@ -150,6 +152,7 @@ class MenuManager {
         if (!hasDom()) return;
         const body = document.getElementById(BODY_ID);
         if (body) body.innerHTML = templates.renderBody(this._buildContext());
+        $(`#${MODAL_ID} [data-toggle="tooltip"]`).tooltip()
     }
 
     open() {
@@ -164,6 +167,7 @@ class MenuManager {
             if ($) $(document.body).append(html);
             else document.body.insertAdjacentHTML('beforeend', html);
             el = document.getElementById(MODAL_ID);
+            $(`#${MODAL_ID} [data-toggle="tooltip"]`).tooltip()
         } else {
             this._refresh();
         }
@@ -249,6 +253,9 @@ class MenuManager {
                 case 'delete-custom-menu':
                     self.deleteCustomMenu(itemId, filePath);
                     break;
+                case 'reload-custom-menu':
+                    console.log('To be done')
+                    break;
                 default:
                     break;
             }
@@ -306,39 +313,95 @@ class MenuManager {
         this._refresh();
     }
 
-    removeFromSection(sectionId, itemId) {
-        const tab = this.mMenu && typeof this.mMenu._findTabById === 'function'
-            ? this.mMenu._findTabById(sectionId)
-            : null;
+    customMenuToJson(menuStructure) {
+        return menuStructure.map(i => (
+            {
+                id: i.id,
+                buttons: (i.buttons || []).map(btn => ({id: btn.id, path: btn.path}))
+            })
+        )
+    }
+
+    removeFromSection(sectionId, itemId, options = {skipRefresh: false}) {
+        const customMenuStore = this.mMenu.customMenuStore
+        const currentCustomMenu = this.mMenu.customMenu
+        const customTabIndex = currentCustomMenu.findIndex(i => i.id === sectionId)
+
+        const tab = currentCustomMenu[customTabIndex]
         if (tab && Array.isArray(tab.buttons)) {
             const idx = tab.buttons.findIndex((b) => b.id === itemId);
             if (idx > -1) tab.buttons.splice(idx, 1);
         }
-        this._markDirty();
-        this._refresh();
+        const newMenu = this.customMenuToJson(currentCustomMenu);
+        customMenuStore.set('menu', newMenu);
+        if (!options.skipRefresh) {
+            this.mMenu.customMenu = this.mMenu._loadCustomMenu();
+            this.invalidateCollectMenus()
+            this._markDirty();
+            this._refresh();
+        }
+        // todo: remove item from main menu
+    }
+
+    _injectCustomButton(tabId, buttonConfig) {
+        // const tab = this.mMenu._findTabById(tabId);
+        const customMenuStore = this.mMenu.customMenuStore
+        // const currentCustomMenu = customMenuStore?.get('menu', [])
+        const currentCustomMenu = this.mMenu.customMenu
+        const customTabIndex = currentCustomMenu.findIndex(i => i.id === tabId)
+        const buttonStoreConfig = {
+            id: buttonConfig.id,
+            path: buttonConfig.path,
+        }
+        if (customTabIndex > -1) {
+            const existingButtonIndex = currentCustomMenu[customTabIndex].buttons.findIndex(btn => {
+                return btn.id === buttonConfig.id;
+            });
+            if (existingButtonIndex === -1) {
+                currentCustomMenu[customTabIndex].buttons.push(buttonStoreConfig)
+            } else {
+                console.warn('Button is there already')
+            }
+        } else {
+            currentCustomMenu.push({ id: tabId, buttons: [buttonStoreConfig] })
+        }
+        const newMenu = this.customMenuToJson(currentCustomMenu);
+        customMenuStore.set('menu', newMenu);
+        this.mMenu.customMenu = this.mMenu._loadCustomMenu();
+        // this.mMenu.injectTabButton(tabId, buttonConfig);
+        // Underlying custom-menu data changed — invalidate cache so
+        // subsequent calls to collectCustomMenus() return fresh data.
+        this.invalidateCollectMenus();
+
     }
 
     installToSection(sectionId, itemId) {
-        const item = this._findItemById(itemId); //todo: do something if this item is not found - means it is a new dialog
-        if (item && this.mMenu && typeof this.mMenu.injectTabButton === 'function') {
-            this.mMenu.injectTabButton(sectionId, item);
-            // this.store.
+        const item = this._findItemById(itemId); //todo: do something if this item is not found
+        if (item) {
+            this._injectCustomButton(sectionId, item)
+            this._markDirty();
+            this._refresh();
+        } else {
+            console.error('For some reason item not found. Investigate it', {sectionId, itemId})
         }
-        this._markDirty();
-        this._refresh();
     }
 
     deleteCustomMenu(itemId, filePath) {
-        for (const tab of this.getSections()) {
-            if (Array.isArray(tab.buttons)) {
-                tab.buttons = tab.buttons.filter((b) => b.id !== itemId);
-            }
+        if (dialog.showMessageBoxSync(getCurrentWindow(), {
+            type: "warning",
+            buttons: ["OK", "Cancel"],
+            message: `Are you sure you want to delete the source file [${filePath}]?`,
+        }) !== 0) { //(responseObj.response
+            return
         }
-        // Optional on-disk removal hook (off by default to preserve current
-        // behaviour). Enable by uncommenting; mirrors oldMarketplace.deleteCustomDialog.
-        // if (this.fs && filePath) {
-        //     try { this.fs.unlinkSync(filePath); } catch (err) { console.error('deleteCustomMenu unlink failed', err); }
-        // }
+        const theItem = this._findItemById(itemId);
+        theItem.sectionIds.forEach((sectionId) => {
+            this.removeFromSection(sectionId, itemId);
+        })
+        try { fs.unlinkSync(filePath); } catch (err) { console.error('deleteCustomMenu unlink failed', err); }
+
+        // Cache invalidation: we've removed items from the sections.
+        this.invalidateCollectMenus();
         this._markDirty();
         this._refresh();
     }
@@ -367,6 +430,9 @@ class MenuManager {
         if (this.mMenu && typeof this.mMenu.recreateMenuObject === 'function') {
             try {
                 this.mMenu.recreateMenuObject();
+                // Recompute custom menus after the host recreates the menu
+                // object in case the operation changed customMenu data.
+                this.invalidateCollectMenus();
             } catch (err) {
                 console.error('MenuManager: recreateMenuObject failed', err);
             }
@@ -384,8 +450,15 @@ class MenuManager {
     }
 
 
+    
+    /**
+     * Collect custom menus and cache the result for subsequent calls.
+     * If you need fresh data, call `invalidateCollectMenus()` before calling
+     * this method (or pass true to the optional `noCache` flag).
+     */
+    collectCustomMenus(noCache = false) {
+        if (!noCache && this._collectCustomMenusCache) return this._collectCustomMenusCache;
 
-    collectCustomMenus() {
         const storeData = this.mMenu.customMenu
         const collected = collectMenus(storeData)
         const scanned = this.scanCustomDialogFiles()
@@ -393,7 +466,17 @@ class MenuManager {
             const installedItem = collected.find(i => i.item.path === f.path || i.item._relativePath === f.path)
             return {...f, ...installedItem?.item, sectionIds: installedItem?.sectionIds || []}
         })
+
+        // Cache the computed result. If callers may mutate the returned
+        // objects, consider returning copies or ensure callers call the
+        // invalidator after making changes.
+        this._collectCustomMenusCache = result;
         return result
+    }
+
+    /** Manually invalidate the cached result of `collectCustomMenus()`. */
+    invalidateCollectMenus() {
+        this._collectCustomMenusCache = null;
     }
 
 
@@ -436,25 +519,23 @@ class MenuManager {
         try {
             // const marketPath = path.join(folderPath, 'dialogs.json');
             this.mMenu.mPlaceDir = folderPath
+            // Invalidate cached custom-menus since the folder changed.
+            this.invalidateCollectMenus();
             if (fs.existsSync(this.mMenu.mPlacePath)) {
                 this._markDirty()
                 this._refresh();
             } else {
                 const menuStructure = this.mMenu.mainMenu.map(({id, icon}) => ({id, icon, buttons: []}))
-                this.store.set('menu', menuStructure)
-                // fs.writeFileSync(marketPath, JSON.stringify(menuStructure));
+                this.mMenu.customMenuStore.set('menu', menuStructure)
             }
-
-
-
-
-
-            // this._updateMarketplaceConfig(marketplaceData);
-            // this._refreshMarketplace();
-            // this._showDialogManagement();
         } catch (error) {
             console.error('Error creating file marketplace:', error);
         }
+    }
+
+    handleRefreshClick = () => {
+        this.invalidateCollectMenus();
+        this._refresh();
     }
 }
 
