@@ -254,7 +254,7 @@ class MenuManager {
                     self.deleteCustomMenu(itemId, filePath);
                     break;
                 case 'reload-custom-menu':
-                    console.log('To be done')
+                    self.handleReloadDialog(itemId);
                     break;
                 default:
                     break;
@@ -267,6 +267,19 @@ class MenuManager {
             self._onHidden();
         });
         this._bound = true;
+    }
+    handleReloadDialog(itemId) {
+        const theItem = this._findItemById(itemId);
+        if (theItem.resolvedDialog) {
+            $(`#${theItem.resolvedDialog.id}`).remove();
+            dialogCacheClear(theItem.path)
+            if (theItem.sectionIds.length > 0) {
+                this.mMenu.customMenu = this.mMenu._loadCustomMenu();
+                this._markDirty();
+            }
+        }
+        this.mMenu.setResolvedObject(theItem)
+        this._refresh();
     }
 
     _findInstallSelect(itemId) {
