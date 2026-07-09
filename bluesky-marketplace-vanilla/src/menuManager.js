@@ -273,12 +273,18 @@ class MenuManager {
         if (theItem.resolvedDialog) {
             $(`#${theItem.resolvedDialog.id}`).remove();
             dialogCacheClear(theItem.path)
-            if (theItem.sectionIds.length > 0) {
-                this.mMenu.customMenu = this.mMenu._loadCustomMenu();
-                this._markDirty();
-            }
         }
         this.mMenu.setResolvedObject(theItem)
+        if (theItem.sectionIds.length > 0) {
+            this._markDirty();
+            this.mMenu.initMenus()
+            theItem.sectionIds.forEach((sectionId) => {
+                const dialogObj = this.mMenu._findDialogInTab(theItem.id, this.mMenu._findTabById(sectionId));
+                if (dialogObj) {
+                    dialogObj.resolvedDialog = theItem.resolvedDialog;
+                }
+            })
+        }
         this._refresh();
     }
 
@@ -347,8 +353,12 @@ class MenuManager {
         }
         const newMenu = this.customMenuToJson(currentCustomMenu);
         customMenuStore.set('menu', newMenu);
+        const menuTab = this.mMenu._findTabById(sectionId)
+        menuTab.buttons = menuTab.buttons.filter(i => i.id !== itemId)
         if (!options.skipRefresh) {
-            this.mMenu.customMenu = this.mMenu._loadCustomMenu();
+            this.mMenu.initMenus()
+            // this.mMenu.customMenu = this.mMenu._loadCustomMenu();
+
             this.invalidateCollectMenus()
             this._markDirty();
             this._refresh();
@@ -380,7 +390,8 @@ class MenuManager {
         }
         const newMenu = this.customMenuToJson(currentCustomMenu);
         customMenuStore.set('menu', newMenu);
-        this.mMenu.customMenu = this.mMenu._loadCustomMenu();
+        // this.mMenu.customMenu = this.mMenu._loadCustomMenu();
+        this.mMenu.initMenus()
         // this.mMenu.injectTabButton(tabId, buttonConfig);
         // Underlying custom-menu data changed — invalidate cache so
         // subsequent calls to collectCustomMenus() return fresh data.
@@ -407,16 +418,22 @@ class MenuManager {
         }) !== 0) { //(responseObj.response
             return
         }
-        const theItem = this._findItemById(itemId);
-        theItem.sectionIds.forEach((sectionId) => {
-            this.removeFromSection(sectionId, itemId);
-        })
-        try { fs.unlinkSync(filePath); } catch (err) { console.error('deleteCustomMenu unlink failed', err); }
 
-        // Cache invalidation: we've removed items from the sections.
-        this.invalidateCollectMenus();
-        this._markDirty();
-        this._refresh();
+        try {
+            fs.unlinkSync(filePath);
+            const theItem = this._findItemById(itemId);
+            theItem.sectionIds.forEach((sectionId) => {
+                this.removeFromSection(sectionId, itemId, {skipRefresh: true});
+            })
+            // this.mMenu.customMenu = this.mMenu._loadCustomMenu();
+            this.mMenu.initMenus()
+            // Cache invalidation: we've removed items from the sections.
+            this.invalidateCollectMenus();
+            this._markDirty();
+            this._refresh();
+        } catch (err) {
+            console.error('deleteCustomMenu unlink failed', err);
+        }
     }
 
     /** Mark that a data change requires the host menu (nav) to be rebuilt on close. */

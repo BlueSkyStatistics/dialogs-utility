@@ -46,8 +46,9 @@ function renderSectionList(ctx) {
 }
 
 /** Equivalent of MenuItemCard.jsx */
-function renderMenuItemCard(item, sectionId, hidden, ctx) {
+function renderMenuItemCard(item, sectionId, ctx) {
     const icon = getItemIcon(item);
+    const hidden = item.isHidden
     // const label = ctx.t(item.id);
     const label = ctx.mMenu._getButtonLabel(item)
     return `<div class="card mb-2 ${hidden ? 'border-secondary' : ''}" style="${hidden ? 'opacity:0.5;' : ''}">
@@ -83,7 +84,7 @@ function renderSubmenuGroup(item, sectionId, ctx) {
             <span class="badge badge-secondary bg-secondary ml-auto">${children.length}</span>
         </div>
         ${open ? `<div class="card-body py-2 px-3">
-            ${children.map((child) => renderMenuItemCard(child, sectionId, child.isHidden, ctx)).join('')}
+            ${children.map((child) => renderMenuItemCard(child, sectionId, ctx)).join('')}
         </div>` : ''}
     </div>`;
 }
@@ -97,7 +98,7 @@ function renderSectionItems(section, ctx) {
     return `<div>${buttons.map((item) => (
         item.children
             ? renderSubmenuGroup(item, section.id, ctx)
-            : renderMenuItemCard(item, section.id, item.isHidden, ctx)
+            : renderMenuItemCard(item, section.id, ctx)
     )).join('')}</div>`;
 }
 
@@ -231,9 +232,9 @@ function renderModalShell(ctx) {
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="${MODAL_ID}Label">Menu Manager</h5>
-                    <button type="button" class="close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true"><i class="fas fa-times"></i></span>
-                    </button>
+<!--                    <button type="button" class="close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close">-->
+<!--                        <span aria-hidden="true"><i class="fas fa-times"></i></span>-->
+<!--                    </button>-->
                 </div>
                 <div class="modal-body" id="${BODY_ID}">
                     ${renderBody(ctx)}
