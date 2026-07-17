@@ -47,8 +47,9 @@ function renderSectionList(ctx) {
 
 /** Equivalent of MenuItemCard.jsx */
 function renderMenuItemCard(item, sectionId, ctx) {
+    const {hiddenSet} = ctx
     const icon = getItemIcon(item);
-    const hidden = item.isHidden
+    const hidden = hiddenSet.has(item.id);
     // const label = ctx.t(item.id);
     const label = ctx.mMenu._getButtonLabel(item)
     return `<div class="card mb-2 ${hidden ? 'border-secondary' : ''}" style="${hidden ? 'opacity:0.5;' : ''}">

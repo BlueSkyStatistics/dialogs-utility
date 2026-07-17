@@ -83,18 +83,12 @@ class MenuManager {
         return (this.mMenu && this.mMenu.mainMenu) || [];
     }
 
-    getHiddenSet() {
-        if (this.mMenu && typeof this.mMenu._getHiddenSet === 'function') {
-            return this.mMenu._getHiddenSet();
-        }
-        return new Set();
-    }
 
     _buildContext() {
         const sections = this.getSections();
         return {
             sections,
-            hiddenSet: this.getHiddenSet(),
+            hiddenSet: this.mMenu._getHiddenSet(),
             activeSectionId: this.activeSectionId,
             openSubmenuIds: this.openSubmenuIds,
             customMenus: this.collectCustomMenus(),
@@ -277,7 +271,7 @@ class MenuManager {
         this.mMenu.setResolvedObject(theItem)
         if (theItem.sectionIds.length > 0) {
             this._markDirty();
-            this.mMenu.initMenus()
+            // this.mMenu.initMenus()
             theItem.sectionIds.forEach((sectionId) => {
                 const dialogObj = this.mMenu._findDialogInTab(theItem.id, this.mMenu._findTabById(sectionId));
                 if (dialogObj) {
@@ -315,19 +309,18 @@ class MenuManager {
             console.log('Menu manager cannot be hidden')
             return;
         }
-        const menuItem = this.mMenu.findDialogById(itemId, sectionId)
-        if (menuItem && this.hiddenStore) {
-            const hiddenObjects = this.hiddenStore.get('hiddenMenuObjects', []);
-            const idx = hiddenObjects.indexOf(itemId);
-            if (hidden) {
-                if (idx === -1) hiddenObjects.push(itemId);
-                menuItem.isHidden = true;
-            } else if (idx > -1) {
-                hiddenObjects.splice(idx, 1);
-                menuItem.isHidden = false;
-            }
-            this.hiddenStore.set('hiddenMenuObjects', hiddenObjects);
-        }
+        const customMenuItem = this._findItemById(itemId);
+        customMenuItem.isHidden = hidden;
+
+        const hiddenSet = this.mMenu._getHiddenSet();
+        hidden ? hiddenSet.add(itemId) : hiddenSet.delete(itemId)
+        this.hiddenStore.set('hiddenMenuObjects', Array.from(hiddenSet.values()));
+
+        customMenuItem.sectionIds.forEach((menuSectionId) => {
+            const menuItem = this.mMenu.findDialogById(itemId, menuSectionId)
+            menuItem.isHidden = hidden
+        })
+
         this._markDirty();
         this._refresh();
     }
