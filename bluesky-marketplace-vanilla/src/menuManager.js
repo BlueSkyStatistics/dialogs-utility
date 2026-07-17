@@ -336,7 +336,7 @@ class MenuManager {
         return menuStructure.map(i => (
             {
                 id: i.id,
-                buttons: (i.buttons || []).map(btn => ({id: btn.id, path: btn.path}))
+                buttons: (i.buttons || []).map(btn => ({id: btn.id, path: btn._relativePath || btn.path}))
             })
         )
     }
@@ -354,7 +354,8 @@ class MenuManager {
         const newMenu = this.customMenuToJson(currentCustomMenu);
         customMenuStore.set('menu', newMenu);
         const menuTab = this.mMenu._findTabById(sectionId)
-        menuTab.buttons = menuTab.buttons.filter(i => i.id !== itemId)
+        const idx = menuTab.buttons.findIndex((b) => b.id === itemId);
+        if (idx > -1) menuTab.buttons.splice(idx, 1);
         if (!options.skipRefresh) {
             this.mMenu.initMenus()
             // this.mMenu.customMenu = this.mMenu._loadCustomMenu();
@@ -372,26 +373,27 @@ class MenuManager {
         // const currentCustomMenu = customMenuStore?.get('menu', [])
         const currentCustomMenu = this.mMenu.customMenu
         const customTabIndex = currentCustomMenu.findIndex(i => i.id === tabId)
-        const buttonStoreConfig = {
-            id: buttonConfig.id,
-            path: buttonConfig.path,
-        }
+        // const {id, path, _relativePath, resolvedDialog, isCustom} = buttonConfig
+        // const buttonStoreConfig = {id, path, _relativePath, resolvedDialog, isCustom}
         if (customTabIndex > -1) {
             const existingButtonIndex = currentCustomMenu[customTabIndex].buttons.findIndex(btn => {
                 return btn.id === buttonConfig.id;
             });
             if (existingButtonIndex === -1) {
-                currentCustomMenu[customTabIndex].buttons.push(buttonStoreConfig)
+                currentCustomMenu[customTabIndex].buttons.push(buttonConfig)
             } else {
                 console.warn('Button is there already')
             }
         } else {
-            currentCustomMenu.push({ id: tabId, buttons: [buttonStoreConfig] })
+            currentCustomMenu.push({ id: tabId, buttons: [buttonConfig] })
         }
         const newMenu = this.customMenuToJson(currentCustomMenu);
         customMenuStore.set('menu', newMenu);
         // this.mMenu.customMenu = this.mMenu._loadCustomMenu();
-        this.mMenu.initMenus()
+
+        // this.mMenu.initMenus()
+        this.mMenu.injectTabButton(tabId, buttonConfig);
+
         // this.mMenu.injectTabButton(tabId, buttonConfig);
         // Underlying custom-menu data changed — invalidate cache so
         // subsequent calls to collectCustomMenus() return fresh data.
@@ -538,7 +540,7 @@ class MenuManager {
                 getCurrentWindow(),
                 {
                     title: 'Select path for market dialogs',
-                    defaultPath: sessionStore.get("HomeDir"),
+                    defaultPath: this.mMenu.mPlaceDir || sessionStore.get("HomeDir"),
                     properties: ['openDirectory', 'createDirectory', 'treatPackageAsDirectory', 'dontAddToRecent'],
                 });
             return selectedFolders ? selectedFolders[0].replace("file://", "") : null;
@@ -553,11 +555,11 @@ class MenuManager {
             this.invalidateCollectMenus();
             if (fs.existsSync(this.mMenu.mPlacePath)) {
                 this._markDirty()
-                this._refresh();
             } else {
                 const menuStructure = this.mMenu.mainMenu.map(({id, icon}) => ({id, icon, buttons: []}))
                 this.mMenu.customMenuStore.set('menu', menuStructure)
             }
+            this._refresh();
         } catch (error) {
             console.error('Error creating file marketplace:', error);
         }
