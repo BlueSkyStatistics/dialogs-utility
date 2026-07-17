@@ -487,8 +487,13 @@ class MenuManager {
         const storeData = this.mMenu.customMenu
         const collected = collectMenus(storeData)
         const scanned = this.scanCustomDialogFiles()
+        const rootDir = this.mMenu.mPlaceDir
         const result = scanned.map(f => {
             const installedItem = collected.find(i => i.item.path === f.path || i.item._relativePath === f.path)
+            if (!installedItem) {
+                f._relativePath = path.relative(rootDir, f.path)
+                f.path = path.resolve(rootDir, f.path)
+            }
             return {...f, ...installedItem?.item, sectionIds: installedItem?.sectionIds || []}
         })
 
