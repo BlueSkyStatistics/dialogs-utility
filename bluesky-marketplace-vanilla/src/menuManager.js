@@ -382,12 +382,11 @@ class MenuManager {
         }
         const newMenu = this.customMenuToJson(currentCustomMenu);
         customMenuStore.set('menu', newMenu);
-        // this.mMenu.customMenu = this.mMenu._loadCustomMenu();
 
-        // this.mMenu.initMenus()
-        this.mMenu.injectTabButton(tabId, buttonConfig);
-
+        this.mMenu.initMenus()
+        this._refresh();
         // this.mMenu.injectTabButton(tabId, buttonConfig);
+
         // Underlying custom-menu data changed — invalidate cache so
         // subsequent calls to collectCustomMenus() return fresh data.
         this.invalidateCollectMenus();
