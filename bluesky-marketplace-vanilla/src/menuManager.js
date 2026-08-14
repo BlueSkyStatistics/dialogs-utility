@@ -309,17 +309,23 @@ class MenuManager {
             console.log('Menu manager cannot be hidden')
             return;
         }
-        const customMenuItem = this._findItemById(itemId);
-        customMenuItem.isHidden = hidden;
-
         const hiddenSet = this.mMenu._getHiddenSet();
         hidden ? hiddenSet.add(itemId) : hiddenSet.delete(itemId)
         this.hiddenStore.set('hiddenMenuObjects', Array.from(hiddenSet.values()));
 
-        customMenuItem.sectionIds.forEach((menuSectionId) => {
-            const menuItem = this.mMenu.findDialogById(itemId, menuSectionId)
-            menuItem.isHidden = hidden
-        })
+        const customMenuItem = this._findItemById(itemId);
+        if (customMenuItem !== undefined) {
+            customMenuItem.isHidden = hidden;
+            customMenuItem.sectionIds.forEach((menuSectionId) => {
+                const menuItem = this.mMenu.findDialogById(itemId, menuSectionId)
+                menuItem.isHidden = hidden
+            })
+        } else {
+            const dialog = this.mMenu.findDialogById(itemId);
+            if (dialog) {
+                dialog.isHidden = hidden;
+            }
+        }
 
         this._markDirty();
         this._refresh();
@@ -514,20 +520,24 @@ class MenuManager {
         if (!mPlaceDir) {
             return []
         }
-        return fs.readdirSync(mPlaceDir)
-            .filter(f => f.endsWith('.js'))
-            .map(f => {
-                const result = this.mMenu.addIdToDialogItem(
-                    f,
-                    'custom-dialog',
-                    mPlaceDir
-                )
-                result._baseName = path.basename(f, '.js')
-                const iconPath = path.join(mPlaceDir, result._baseName, '.svg')
-                result.icon = fs.existsSync(iconPath) ? iconPath : undefined
-                result.isCustom = true
-                return result
-            });
+        try {
+            return fs.readdirSync(mPlaceDir)
+                .filter(f => f.endsWith('.js'))
+                .map(f => {
+                    const result = this.mMenu.addIdToDialogItem(
+                        f,
+                        'custom-dialog',
+                        mPlaceDir
+                    )
+                    result._baseName = path.basename(f, '.js')
+                    const iconPath = path.join(mPlaceDir, result._baseName, '.svg')
+                    result.icon = fs.existsSync(iconPath) ? iconPath : undefined
+                    result.isCustom = true
+                    return result
+                });
+        } catch (e) {
+            return []
+        }
     }
 
     setCustomDialogsFolder = () => {
