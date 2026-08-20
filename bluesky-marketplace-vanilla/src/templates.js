@@ -103,6 +103,47 @@ function renderSectionItems(section, ctx) {
     )).join('')}</div>`;
 }
 
+function getErrorDetails(error) {
+    const stack = Array.isArray(error?.stack)
+        ? error.stack.map((line) => String(line))
+        : (error?.stack ? String(error.stack).split(/\r?\n/) : []);
+    const message = String(error?.message || stack[0] || error || 'Unable to load custom menu.');
+    const stackLines = stack[0] === message ? stack.slice(1) : stack;
+
+    return {
+        message,
+        stack: stackLines.join('\n') || 'No stack trace is available.',
+    };
+}
+
+function getErrorStackId(itemId) {
+    return `menuManagerErrorStack-${String(itemId).replace(/[^A-Za-z0-9_-]/g, '-')}`;
+}
+
+function renderErrorTooltip(item) {
+    const {message, stack} = getErrorDetails(item.error);
+    const stackId = getErrorStackId(item.id);
+    const tooltipContent = `<div class="text-left" style="min-width:18rem; max-width:26rem;">
+        <div class="font-weight-bold mb-1">Error</div>
+        <div class="mb-2" style="user-select:text; cursor:text; white-space:pre-wrap;">${esc(message)}</div>
+        <button type="button" class="btn btn-sm btn-link p-0 text-light"
+            data-toggle="collapse" data-bs-toggle="collapse"
+            data-target="#${stackId}" data-bs-target="#${stackId}"
+            aria-expanded="false" aria-controls="${stackId}">
+            Show technical details
+        </button>
+        <div id="${stackId}" class="collapse mt-2">
+            <pre class="mb-0 text-light" style="user-select:text; cursor:text; white-space:pre-wrap; font-size:0.75rem;">${esc(stack)}</pre>
+        </div>
+    </div>`;
+
+    return `<button type="button" class="btn btn-sm p-0 text-warning mr-1 mb-1"
+        aria-label="Show error details"
+        data-error-tooltip="true"
+        data-error-tooltip-content="${esc(tooltipContent)}">
+        <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
+    </button>`;
+}
 
 function renderCustomMenuCard(item, ctx) {
     const {sections, t} = ctx;
@@ -142,10 +183,7 @@ function renderCustomMenuCard(item, ctx) {
             <div class="d-flex align-items-center mb-2">
                 ${icon ? `<i class="${esc(icon)} mr-2"></i>` : ''}
                 <span class="font-weight-bold fw-semibold flex-grow-1 text-truncate">${esc(label)}</span>
-                ${item.error ? `<i class="fas fa-exclamation-triangle text-warning mr-1 mb-1" role="button" tabindex="0"
-                    data-toggle="tooltip" data-placement="top" data-trigger="focus" title="${esc(item.error?.stack)}">
-                    <span class="sr-only">${esc(item.error?.stack)}</span>
-                </i>` : ''}
+                ${item.error ? renderErrorTooltip(item) : ''}
                 <button type="button" class="btn btn-sm ml-2" title="Reload dialog" 
                     data-toggle="tooltip" data-placement="top"
                     data-action="reload-custom-menu" data-item-id="${esc(item.id)}" data-file-path="${esc(item.path || '')}">
@@ -252,6 +290,8 @@ module.exports = {
     MODAL_ID,
     BODY_ID,
     esc,
+    getErrorDetails,
+    renderErrorTooltip,
     renderSectionList,
     renderMenuItemCard,
     renderSubmenuGroup,
