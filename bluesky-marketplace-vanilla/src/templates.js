@@ -213,7 +213,7 @@ function renderCustomMenusPanel(ctx) {
             ${customMenus.length === 0 ? '<p class="text-muted">No custom menus found.</p>' : ''}
             <label class="form-label">Add path to Marketplace Dialogs</label>
             <div>
-                <span>${mPlaceDir}</span>
+                <span>${mPlaceDir || ''}</span>
                 <button type="button" class="btn btn-upload" onclick="menuManager.setCustomDialogsFolder()">Select Folder</button>
                 ${mPlaceDir ? `<button type="button" class="btn btn-secondary" onclick="menuManager.handleRefreshClick()">Refresh</button>` : ''}
                 ${mPlaceDir ? `<button type="button" class="btn btn-secondary" onclick="mMenu.openUserDialogsFolder()">Open Folder</button>` : ''}
