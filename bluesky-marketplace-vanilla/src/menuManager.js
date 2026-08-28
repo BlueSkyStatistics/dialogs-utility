@@ -146,7 +146,7 @@ class MenuManager {
         if (!hasDom()) return;
         const body = document.getElementById(BODY_ID);
         if (body) body.innerHTML = templates.renderBody(this._buildContext());
-        $(`#${MODAL_ID} [data-toggle="tooltip"]`).tooltip()
+        $(`#${MODAL_ID} [data-bs-toggle="tooltip"]`).tooltip()
     }
 
     open() {
@@ -161,7 +161,7 @@ class MenuManager {
             if ($) $(document.body).append(html);
             else document.body.insertAdjacentHTML('beforeend', html);
             el = document.getElementById(MODAL_ID);
-            $(`#${MODAL_ID} [data-toggle="tooltip"]`).tooltip()
+            $(`#${MODAL_ID} [data-bs-toggle="tooltip"]`).tooltip()
         } else {
             this._refresh();
         }

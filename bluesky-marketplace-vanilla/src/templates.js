@@ -143,16 +143,16 @@ function renderCustomMenuCard(item, ctx) {
                 ${icon ? `<i class="${esc(icon)} mr-2"></i>` : ''}
                 <span class="font-weight-bold fw-semibold flex-grow-1 text-truncate">${esc(label)}</span>
                 ${item.error ? `<i class="fas fa-exclamation-triangle text-warning mr-1 mb-1" role="button" tabindex="0"
-                    data-toggle="tooltip" data-placement="top" data-trigger="focus" title="${esc(item.error?.stack)}">
+                    data-bs-toggle="tooltip" data-bs-placement="top" data-bs-trigger="focus" title="${esc(item.error?.stack)}">
                     <span class="sr-only">${esc(item.error?.stack)}</span>
                 </i>` : ''}
                 <button type="button" class="btn btn-sm ml-2" title="Reload dialog" 
-                    data-toggle="tooltip" data-placement="top"
+                    data-bs-toggle="tooltip" data-bs-placement="top"
                     data-action="reload-custom-menu" data-item-id="${esc(item.id)}" data-file-path="${esc(item.path || '')}">
                     <i class="fas fa-sync"></i>
                 </button>
                 <button type="button" class="btn btn-sm btn-danger ml-2" title="Delete custom menu"
-                    data-toggle="tooltip" data-placement="top"
+                    data-bs-toggle="tooltip" data-bs-placement="top"
                     data-action="delete-custom-menu" data-item-id="${esc(item.id)}" data-file-path="${esc(item.path || '')}">
                     <i class="fas fa-trash"></i>
                 </button>
@@ -233,7 +233,7 @@ function renderModalShell(ctx) {
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="${MODAL_ID}Label">Menu Manager</h5>
-<!--                    <button type="button" class="close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close">-->
+<!--                    <button type="button" class="close" data-bs-dismiss="modal" data-bs-dismiss="modal" aria-label="Close">-->
 <!--                        <span aria-hidden="true"><i class="fas fa-times"></i></span>-->
 <!--                    </button>-->
                 </div>
@@ -241,7 +241,7 @@ function renderModalShell(ctx) {
                     ${renderBody(ctx)}
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-secondary" onclick="$('#menuManager').removeAttr('dataset').modal('hide')">Close</button>
                 </div>
             </div>
         </div>
