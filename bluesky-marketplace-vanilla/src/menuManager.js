@@ -145,8 +145,9 @@ class MenuManager {
     _refresh() {
         if (!hasDom()) return;
         const body = document.getElementById(BODY_ID);
+        this._disposeTooltips();
         if (body) body.innerHTML = templates.renderBody(this._buildContext());
-        $(`#${MODAL_ID} [data-bs-toggle="tooltip"]`).tooltip()
+        this._initializeTooltips();
     }
 
     open() {
@@ -161,13 +162,73 @@ class MenuManager {
             if ($) $(document.body).append(html);
             else document.body.insertAdjacentHTML('beforeend', html);
             el = document.getElementById(MODAL_ID);
-            $(`#${MODAL_ID} [data-bs-toggle="tooltip"]`).tooltip()
+            this._initializeTooltips();
         } else {
             this._refresh();
         }
         this._bindEvents();
         this._show(el);
         return el;
+    }
+    _disposeTooltips() {
+        const $ = jq();
+        if ($ && $.fn && $.fn.tooltip) {
+            $(`#${MODAL_ID} [data-toggle="tooltip"], #${MODAL_ID} [data-error-tooltip]`).tooltip('dispose');
+        } else {
+            document.querySelectorAll(`#${MODAL_ID} [data-toggle="tooltip"], #${MODAL_ID} [data-error-tooltip]`).forEach((el) => {
+                bs()?.Tooltip?.getInstance(el)?.dispose();
+            });
+        }
+    }
+
+    _initializeTooltips() {
+        if (!hasDom()) return;
+        const $ = jq();
+        const regularSelector = `#${MODAL_ID} [data-toggle="tooltip"]`;
+        const errorSelector = `#${MODAL_ID} [data-error-tooltip]`;
+        const errorTemplate = '<div class="tooltip menu-manager-error-tooltip" role="tooltip" style="pointer-events:auto;"><div class="arrow"></div><div class="tooltip-inner" style="max-width:26rem; text-align:left;"></div></div>';
+
+        if ($ && $.fn && $.fn.tooltip) {
+            $(regularSelector).tooltip();
+            $(errorSelector).each(function () {
+                const trigger = this;
+                $(trigger).tooltip({
+                    trigger: 'manual',
+                    html: true,
+                    sanitize: false,
+                    placement: 'top',
+                    template: errorTemplate,
+                    title: () => trigger.getAttribute('data-error-tooltip-content'),
+                }).on('click.menuManagerErrorTooltip', function (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    $(errorSelector).not(trigger).tooltip('hide');
+                    $(trigger).tooltip('show');
+                });
+            });
+        } else if (bs()?.Tooltip) {
+            document.querySelectorAll(regularSelector).forEach((el) => {
+                bs().Tooltip.getOrCreateInstance(el);
+            });
+            document.querySelectorAll(errorSelector).forEach((trigger) => {
+                const tooltip = bs().Tooltip.getOrCreateInstance(trigger, {
+                    trigger: 'manual',
+                    html: true,
+                    sanitize: false,
+                    placement: 'top',
+                    template: errorTemplate,
+                    title: () => trigger.getAttribute('data-error-tooltip-content'),
+                });
+                trigger.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    document.querySelectorAll(errorSelector).forEach((el) => {
+                        if (el !== trigger) bs().Tooltip.getInstance(el)?.hide();
+                    });
+                    tooltip.show();
+                });
+            });
+        }
     }
 
     close() {
@@ -259,6 +320,11 @@ class MenuManager {
         // open modal mid-interaction (which would orphan the modal backdrop).
         $(document).on('hidden.bs.modal', `#${MODAL_ID}`, function () {
             self._onHidden();
+        });
+        $(document).on('click', function (event) {
+            if (!event.target.closest(`[data-error-tooltip], .menu-manager-error-tooltip`)) {
+                $(`#${MODAL_ID} [data-error-tooltip]`).tooltip('hide');
+            }
         });
         this._bound = true;
     }
