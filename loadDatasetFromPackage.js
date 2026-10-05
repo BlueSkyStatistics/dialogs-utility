@@ -76,7 +76,8 @@ BSkyLoadRefresh(BSkyGetDatasetNameFromPackageDatasetList("{{selected.selectAData
                 datasetRequired: false,
                 //onclick: `r_before_modal('${config.id}')`,
                 onclick: `js_before_modal('${config.id}')`,
-                modal_id: config.id
+                modal_id: config.id,
+                datasetRequired : false,
             }
         }
         super(config, objects, content);
