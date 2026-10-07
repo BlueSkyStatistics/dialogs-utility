@@ -45,16 +45,30 @@ function renderSectionList(ctx) {
     </div>`;
 }
 
+/**
+ * Icon of a dialog item: a font-icon class (`icon`) or, failing that, an image
+ * (`nav.img` / same-name .svg), resolved the same way the main menu does it.
+ */
+function renderItemIcon(item, ctx) {
+    const icon = getItemIcon(item);
+    if (icon) return `<i class="${esc(icon)} mr-2"></i>`;
+    const nav = (item.resolvedDialog && item.resolvedDialog.nav) || {};
+    const resolve = ctx.mMenu && ctx.mMenu._resolveNavImgUrl;
+    const imgUrl = typeof resolve === 'function'
+        ? resolve.call(ctx.mMenu, {img: nav.img || item.img}, item)
+        : undefined;
+    return imgUrl ? `<img class="btnimg mr-2" src="${esc(imgUrl)}" alt="" draggable="false">` : '';
+}
+
 /** Equivalent of MenuItemCard.jsx */
 function renderMenuItemCard(item, sectionId, ctx) {
     const {hiddenSet} = ctx
-    const icon = getItemIcon(item);
     const hidden = hiddenSet.has(item.id);
     // const label = ctx.t(item.id);
     const label = ctx.mMenu._getButtonLabel(item)
     return `<div class="card mb-2 ${hidden ? 'border-secondary' : ''}" style="${hidden ? 'opacity:0.5;' : ''}">
         <div class="card-body d-flex align-items-center py-2 px-3">
-            ${icon ? `<i class="${esc(icon)} mr-2"></i>` : ''}
+            ${renderItemIcon(item, ctx)}
             <span class="flex-grow-1 text-truncate">${esc(label)}</span>
             <button type="button"
                 class="btn btn-sm ${hidden ? 'btn-outline-success' : 'btn-outline-warning'} ml-2"
@@ -148,7 +162,6 @@ function renderErrorTooltip(item) {
 function renderCustomMenuCard(item, ctx) {
     const {sections, t} = ctx;
 
-    const icon = getItemIcon(item);
     const label = ctx.mMenu._getButtonLabel(item) || item._baseName
     // const filePath = getItemFilePath(item);
     // const availableSections = sections.filter((s) => !sectionIds.includes(s.id));
@@ -181,7 +194,7 @@ function renderCustomMenuCard(item, ctx) {
     return `<div class="card mb-2">
         <div class="card-body py-2 px-3">
             <div class="d-flex align-items-center mb-2">
-                ${icon ? `<i class="${esc(icon)} mr-2"></i>` : ''}
+                ${renderItemIcon(item, ctx)}
                 <span class="font-weight-bold fw-semibold flex-grow-1 text-truncate">${esc(label)}</span>
                 ${item.error ? renderErrorTooltip(item) : ''}
                 <button type="button" class="btn btn-sm ml-2" title="Reload dialog" 
