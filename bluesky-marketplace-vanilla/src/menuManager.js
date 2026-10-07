@@ -596,8 +596,10 @@ class MenuManager {
                         mPlaceDir
                     )
                     result._baseName = path.basename(f, '.js')
-                    const iconPath = path.join(mPlaceDir, result._baseName, '.svg')
-                    result.icon = fs.existsSync(iconPath) ? iconPath : undefined
+                    // Same-name .svg next to the dialog. Kept in `img` (a file path);
+                    // `icon` is a CSS class name everywhere else.
+                    const iconPath = path.join(mPlaceDir, `${result._baseName}.svg`)
+                    result.img = fs.existsSync(iconPath) ? iconPath : undefined
                     result.isCustom = true
                     return result
                 });
