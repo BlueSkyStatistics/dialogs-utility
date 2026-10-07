@@ -57,7 +57,10 @@ function renderItemIcon(item, ctx) {
     const imgUrl = typeof resolve === 'function'
         ? resolve.call(ctx.mMenu, {img: nav.img || item.img}, item)
         : undefined;
-    return imgUrl ? `<img class="btnimg mr-2" src="${esc(imgUrl)}" alt="" draggable="false">` : '';
+    if (imgUrl) return `<img class="btnimg mr-2" src="${esc(imgUrl)}" alt="" draggable="false">`;
+    // user-installed dialog with no icon and no usable image: default icon
+    if (item.isCustom) return `<i class="${esc((ctx.mMenu && ctx.mMenu.defaultCustomIcon) || 'icon-light-up')} mr-2"></i>`;
+    return '';
 }
 
 /** Equivalent of MenuItemCard.jsx */
