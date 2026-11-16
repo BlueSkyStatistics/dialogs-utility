@@ -301,10 +301,20 @@ class MenuManager {
                     break;
                 case 'install-to-section': {
                     const select = self._findInstallSelect(itemId);
-                    const targetSectionId = select && select.value;
-                    if (targetSectionId) self.installToSection(targetSectionId, itemId);
+                    // value is "<sectionId>" or "<sectionId>::<groupId>"
+                    const [targetSectionId, targetGroupId] = String(select && select.value || '')
+                        .split(templates.INSTALL_TARGET_SEPARATOR);
+                    if (targetSectionId) self.installToSection(targetSectionId, itemId, targetGroupId);
                     break;
                 }
+                case 'add-group': {
+                    const input = self._findInput('new-group-label', sectionId);
+                    self.addCustomGroup(sectionId, input && input.value);
+                    break;
+                }
+                case 'delete-group':
+                    self.deleteCustomGroup(sectionId, itemId);
+                    break;
                 case 'delete-custom-menu':
                     self.deleteCustomMenu(itemId, filePath);
                     break;
@@ -435,7 +445,15 @@ class MenuManager {
                 tab.label = i.label;
             }
             if (i.icon) tab.icon = i.icon;
-            tab.buttons = (i.buttons || []).map(btn => ({id: btn.id, path: btn._relativePath || btn.path}));
+            const dialogToJson = btn => ({id: btn.id, path: btn._relativePath || btn.path});
+            tab.buttons = (i.buttons || []).map(btn => {
+                if (!Array.isArray(btn.children)) return dialogToJson(btn);
+                // Button group (dropdown) created in the menu manager
+                const group = {id: btn.id, label: btn.label};
+                if (btn.icon) group.icon = btn.icon;
+                group.children = btn.children.map(dialogToJson);
+                return group;
+            });
             return tab;
         })
     }
@@ -477,6 +495,44 @@ class MenuManager {
         this._refresh();
     }
 
+    /** Add an empty button group (a dropdown button) to a section; custom dialogs are installed into it. */
+    addCustomGroup(sectionId, label) {
+        label = String(label || '').trim();
+        if (!sectionId || !label || !this._requireCustomFolder()) return;
+        const customMenu = this.mMenu.customMenu;
+        let tab = customMenu.find(i => i.id === sectionId);
+        if (!tab) {
+            tab = {id: sectionId, buttons: []};
+            customMenu.push(tab);
+        }
+        const takenIds = this.getSections().flatMap(s => flattenItems(s.buttons || [])).map(b => b.id);
+        const id = makeUniqueId('custom-group', label, takenIds);
+        tab.buttons.push({id, label, children: []});
+        this._saveCustomMenu();
+        this.openSubmenuIds.add(id);
+        this._refresh();
+        return id;
+    }
+
+    /** Delete a button group created in the menu manager. Its dialogs stay in the custom dialogs folder. */
+    deleteCustomGroup(sectionId, groupId) {
+        const tab = this.mMenu.customMenu.find(i => i.id === sectionId);
+        const index = tab ? tab.buttons.findIndex(b => b.id === groupId && Array.isArray(b.children)) : -1;
+        if (index === -1) return;
+        const group = tab.buttons[index];
+        if (group.children.length > 0 && dialog.showMessageBoxSync(getCurrentWindow(), {
+            type: 'warning',
+            buttons: ['OK', 'Cancel'],
+            message: `Delete the button group "${group.label}"? Its dialogs stay in your custom dialogs folder.`,
+        }) !== 0) {
+            return;
+        }
+        tab.buttons.splice(index, 1);
+        this.openSubmenuIds.delete(groupId);
+        this._saveCustomMenu();
+        this._refresh();
+    }
+
     /** Remove a user tab. Its dialogs stay in the custom dialogs folder and can be installed elsewhere. */
     deleteCustomTab(sectionId) {
         const customMenu = this.mMenu.customMenu;
@@ -496,21 +552,25 @@ class MenuManager {
         this._refresh();
     }
 
+    /** Remove a dialog from a tab's buttons and from any button group (children) in it. */
+    _removeDialogFromTab(tab, itemId) {
+        if (!tab || !Array.isArray(tab.buttons)) return;
+        const idx = tab.buttons.findIndex((b) => b.id === itemId && !Array.isArray(b.children));
+        if (idx > -1) tab.buttons.splice(idx, 1);
+        tab.buttons.forEach((b) => {
+            if (!Array.isArray(b.children)) return;
+            const childIdx = b.children.findIndex((c) => c.id === itemId);
+            if (childIdx > -1) b.children.splice(childIdx, 1);
+        });
+    }
+
     removeFromSection(sectionId, itemId, options = {skipRefresh: false}) {
         const customMenuStore = this.mMenu.customMenuStore
         const currentCustomMenu = this.mMenu.customMenu
-        const customTabIndex = currentCustomMenu.findIndex(i => i.id === sectionId)
-
-        const tab = currentCustomMenu[customTabIndex]
-        if (tab && Array.isArray(tab.buttons)) {
-            const idx = tab.buttons.findIndex((b) => b.id === itemId);
-            if (idx > -1) tab.buttons.splice(idx, 1);
-        }
+        this._removeDialogFromTab(currentCustomMenu.find(i => i.id === sectionId), itemId)
         const newMenu = this.customMenuToJson(currentCustomMenu);
         customMenuStore.set('menu', newMenu);
-        const menuTab = this.mMenu._findTabById(sectionId)
-        const idx = menuTab.buttons.findIndex((b) => b.id === itemId);
-        if (idx > -1) menuTab.buttons.splice(idx, 1);
+        this._removeDialogFromTab(this.mMenu._findTabById(sectionId), itemId)
         if (!options.skipRefresh) {
             this.mMenu.initMenus()
             // this.mMenu.customMenu = this.mMenu._loadCustomMenu();
@@ -522,7 +582,7 @@ class MenuManager {
         // todo: remove item from main menu
     }
 
-    _injectCustomButton(tabId, buttonConfig) {
+    _injectCustomButton(tabId, buttonConfig, groupId = undefined) {
         // const tab = this.mMenu._findTabById(tabId);
         const customMenuStore = this.mMenu.customMenuStore
         // const currentCustomMenu = customMenuStore?.get('menu', [])
@@ -530,7 +590,19 @@ class MenuManager {
         const customTabIndex = currentCustomMenu.findIndex(i => i.id === tabId)
         // const {id, path, _relativePath, resolvedDialog, isCustom} = buttonConfig
         // const buttonStoreConfig = {id, path, _relativePath, resolvedDialog, isCustom}
-        if (customTabIndex > -1) {
+        if (groupId) {
+            const group = customTabIndex > -1 && currentCustomMenu[customTabIndex].buttons
+                .find(btn => btn.id === groupId && Array.isArray(btn.children));
+            if (!group) {
+                console.error('Button group not found in custom menu', {tabId, groupId});
+                return;
+            }
+            if (group.children.some(child => child.id === buttonConfig.id)) {
+                console.warn('Button is in this group already')
+            } else {
+                group.children.push(buttonConfig)
+            }
+        } else if (customTabIndex > -1) {
             const existingButtonIndex = currentCustomMenu[customTabIndex].buttons.findIndex(btn => {
                 return btn.id === buttonConfig.id;
             });
@@ -555,10 +627,10 @@ class MenuManager {
 
     }
 
-    installToSection(sectionId, itemId) {
+    installToSection(sectionId, itemId, groupId = undefined) {
         const item = this._findItemById(itemId); //todo: do something if this item is not found
         if (item) {
-            this._injectCustomButton(sectionId, item)
+            this._injectCustomButton(sectionId, item, groupId)
             this._markDirty();
             this._refresh();
         } else {
@@ -727,6 +799,8 @@ class MenuManager {
                     .map(({id, icon}) => ({id, icon, buttons: []}))
                 this.mMenu.customMenuStore.set('menu', menuStructure)
             }
+            // Load the new folder's custom menu now, so tabs/groups added next build on it
+            this.mMenu.initMenus()
             this._refresh();
         } catch (error) {
             console.error('Error creating file marketplace:', error);
