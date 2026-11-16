@@ -37,11 +37,49 @@ function renderSectionList(ctx) {
     return `<div class="list-group">
         ${sections.map((section) => `
             <button type="button"
-                class="list-group-item list-group-item-action ${section.id === activeSectionId ? 'active' : ''}"
+                class="list-group-item list-group-item-action d-flex align-items-center ${section.id === activeSectionId ? 'active' : ''}"
                 style="color: var(--bs-light);"
                 data-action="select-section" data-section-id="${esc(section.id)}">
-                ${esc(getSectionName(section, t))}
+                <span class="flex-grow-1 text-truncate">${esc(getSectionName(section, t))}</span>
+                ${section.isCustomTab ? '<span class="badge badge-success bg-success ml-2">Custom</span>' : ''}
             </button>`).join('')}
+    </div>
+    ${renderNewTabForm(ctx)}`;
+}
+
+/** "New tab" form under the section list. Custom tabs live in the custom dialogs folder store. */
+function renderNewTabForm(ctx) {
+    if (!ctx.mMenu.mPlaceDir) {
+        return `<p class="text-muted small mt-2 mb-0">Select a custom dialogs folder below to add your own tabs.</p>`;
+    }
+    return `<div class="input-group input-group-sm mt-2">
+        <input type="text" class="form-control form-control-sm" placeholder="New tab name"
+            maxlength="40" style="color: var(--dark-gray) !important;"
+            data-role="new-tab-label" data-submit-action="add-tab">
+        <div class="input-group-append">
+            <button type="button" class="btn btn-sm btn-primary m-0" title="Add tab" data-action="add-tab">
+                <i class="fas fa-plus"></i>
+            </button>
+        </div>
+    </div>`;
+}
+
+/** Rename / delete controls shown above the items of a user-created tab. */
+function renderCustomTabControls(section) {
+    if (!section || !section.isCustomTab) return '';
+    return `<div class="d-flex align-items-center mb-2">
+        <input type="text" class="form-control form-control-sm mr-2" maxlength="40"
+            style="color: var(--dark-gray) !important;"
+            value="${esc(section.label || '')}"
+            data-role="rename-tab-label" data-section-id="${esc(section.id)}" data-submit-action="rename-tab">
+        <button type="button" class="btn btn-sm btn-outline-primary m-0 mr-2" title="Rename tab"
+            data-action="rename-tab" data-section-id="${esc(section.id)}">
+            <i class="fas fa-check"></i>
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-danger m-0" title="Delete tab"
+            data-action="delete-tab" data-section-id="${esc(section.id)}">
+            <i class="fas fa-trash"></i>
+        </button>
     </div>`;
 }
 
@@ -113,7 +151,10 @@ function renderSectionItems(section, ctx) {
         return '<p class="text-muted">Select a section to view its items.</p>';
     }
     const buttons = section.buttons || [];
-    return `<div>${buttons.map((item) => (
+    const empty = buttons.length === 0
+        ? `<p class="text-muted small">This tab is empty. Install a custom dialog into it from the list below; it appears in the main menu once it has a dialog.</p>`
+        : '';
+    return `<div>${renderCustomTabControls(section)}${empty}${buttons.map((item) => (
         item.children
             ? renderSubmenuGroup(item, section.id, ctx)
             : renderMenuItemCard(item, section.id, ctx)
@@ -254,7 +295,7 @@ function renderBody(ctx) {
     const {sections, activeSectionId} = ctx;
     const activeSection = sections.find((s) => s.id === activeSectionId) || null;
     const itemsHeading = activeSection
-        ? `Items — ${esc(activeSection.name || activeSection.id)}`
+        ? `Items — ${esc(getSectionName(activeSection, ctx.t))}`
         : 'Items';
 
     return `
@@ -309,6 +350,8 @@ module.exports = {
     getErrorDetails,
     renderErrorTooltip,
     renderSectionList,
+    renderNewTabForm,
+    renderCustomTabControls,
     renderMenuItemCard,
     renderSubmenuGroup,
     renderSectionItems,

@@ -20,7 +20,7 @@
  */
 
 const templates = require('./templates');
-const {flattenItems, collectMenus} = require('./menuUtils');
+const {flattenItems, collectMenus, makeUniqueId} = require('./menuUtils');
 const fs = require("fs");
 const path = require("path");
 const {dialog, getCurrentWindow} = require("@electron/remote");
@@ -311,9 +311,32 @@ class MenuManager {
                 case 'reload-custom-menu':
                     self.handleReloadDialog(itemId);
                     break;
+                case 'add-tab': {
+                    const input = self._findInput('new-tab-label');
+                    self.addCustomTab(input && input.value);
+                    break;
+                }
+                case 'rename-tab': {
+                    const input = self._findInput('rename-tab-label', sectionId);
+                    self.renameCustomTab(sectionId, input && input.value);
+                    break;
+                }
+                case 'delete-tab':
+                    self.deleteCustomTab(sectionId);
+                    break;
                 default:
                     break;
             }
+        });
+        // Enter in a text field triggers its button (data-submit-action on the input).
+        $(document).on('keydown', `#${MODAL_ID} input[data-submit-action]`, function (e) {
+            if (e.key !== 'Enter') return;
+            e.preventDefault();
+            const sectionId = this.getAttribute('data-section-id');
+            const selector = `#${MODAL_ID} [data-action="${this.getAttribute('data-submit-action')}"]`
+                + (sectionId ? `[data-section-id="${cssAttrEscape(sectionId)}"]` : '');
+            const button = document.querySelector(selector);
+            if (button) $(button).trigger('click');
         });
         // Rebuild the host menu (nav) once the dialog has fully closed and
         // Bootstrap has removed its backdrop. Deferring avoids tearing down the
@@ -346,6 +369,12 @@ class MenuManager {
             })
         }
         this._refresh();
+    }
+
+    _findInput(role, sectionId = null) {
+        if (!hasDom()) return null;
+        const sectionFilter = sectionId ? `[data-section-id="${cssAttrEscape(sectionId)}"]` : '';
+        return document.querySelector(`#${MODAL_ID} [data-role="${role}"]${sectionFilter}`);
     }
 
     _findInstallSelect(itemId) {
@@ -398,12 +427,73 @@ class MenuManager {
     }
 
     customMenuToJson(menuStructure) {
-        return menuStructure.map(i => (
-            {
-                id: i.id,
-                buttons: (i.buttons || []).map(btn => ({id: btn.id, path: btn._relativePath || btn.path}))
-            })
-        )
+        return menuStructure.map(i => {
+            const tab = {id: i.id};
+            // User-created tabs keep their label; icon is kept for any tab that has one.
+            if (i.isCustomTab) {
+                tab.isCustomTab = true;
+                tab.label = i.label;
+            }
+            if (i.icon) tab.icon = i.icon;
+            tab.buttons = (i.buttons || []).map(btn => ({id: btn.id, path: btn._relativePath || btn.path}));
+            return tab;
+        })
+    }
+
+    /** Persist `mMenu.customMenu` to the custom dialogs store and reload the host menu data. */
+    _saveCustomMenu() {
+        const customMenuStore = this.mMenu.customMenuStore;
+        customMenuStore.set('menu', this.customMenuToJson(this.mMenu.customMenu));
+        this.mMenu.initMenus();
+        this.invalidateCollectMenus();
+        this._markDirty();
+    }
+
+    _requireCustomFolder() {
+        if (this.mMenu.customMenuStore) return true;
+        dialog.showErrorBox('Menu Manager', 'Select a custom dialogs folder first. Custom tabs are saved there.');
+        return false;
+    }
+
+    /** Create a new, empty user tab with the given label and select it. */
+    addCustomTab(label) {
+        label = String(label || '').trim();
+        if (!label || !this._requireCustomFolder()) return;
+        const takenIds = [...this.getSections(), ...this.mMenu.customMenu].map(i => i.id);
+        const id = makeUniqueId('custom-tab', label, takenIds);
+        this.mMenu.customMenu.push({id, label, isCustomTab: true, buttons: []});
+        this._saveCustomMenu();
+        this.activeSectionId = id;
+        this._refresh();
+        return id;
+    }
+
+    renameCustomTab(sectionId, label) {
+        label = String(label || '').trim();
+        const tab = this.mMenu.customMenu.find(i => i.id === sectionId && i.isCustomTab);
+        if (!label || !tab || tab.label === label) return;
+        tab.label = label;
+        this._saveCustomMenu();
+        this._refresh();
+    }
+
+    /** Remove a user tab. Its dialogs stay in the custom dialogs folder and can be installed elsewhere. */
+    deleteCustomTab(sectionId) {
+        const customMenu = this.mMenu.customMenu;
+        const index = customMenu.findIndex(i => i.id === sectionId && i.isCustomTab);
+        if (index === -1) return;
+        const tab = customMenu[index];
+        if (dialog.showMessageBoxSync(getCurrentWindow(), {
+            type: 'warning',
+            buttons: ['OK', 'Cancel'],
+            message: `Delete the tab "${tab.label}"? Its dialogs stay in your custom dialogs folder.`,
+        }) !== 0) {
+            return;
+        }
+        customMenu.splice(index, 1);
+        this._saveCustomMenu();
+        if (this.activeSectionId === sectionId) this.activeSectionId = null;
+        this._refresh();
     }
 
     removeFromSection(sectionId, itemId, options = {skipRefresh: false}) {
@@ -631,7 +721,10 @@ class MenuManager {
             if (fs.existsSync(this.mMenu.mPlacePath)) {
                 this._markDirty()
             } else {
-                const menuStructure = this.mMenu.mainMenu.map(({id, icon}) => ({id, icon, buttons: []}))
+                // Seed with the built-in tabs only; user tabs belong to the previous folder.
+                const menuStructure = this.mMenu.mainMenu
+                    .filter(tab => !tab.isCustomTab)
+                    .map(({id, icon}) => ({id, icon, buttons: []}))
                 this.mMenu.customMenuStore.set('menu', menuStructure)
             }
             this._refresh();

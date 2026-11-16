@@ -19,6 +19,8 @@ function getItemIcon(item) {
  * Get display name for a section.
  */
 function getSectionName(section, t) {
+    // User-created tabs carry their own label; built-in tabs are translated by id.
+    if (section.label) return section.label;
     return t(section.id);
     // return section.name || section.tab || section.id || 'Unnamed Section';
 }
@@ -71,7 +73,24 @@ function collectMenus(sections) {
     return Array.from(customMap.values());
 }
 
+/**
+ * Build an id `${prefix}-${slug(label)}` that is not in `takenIds`
+ * (appends -2, -3, ... on collision).
+ */
+function makeUniqueId(prefix, label, takenIds) {
+    const slug = String(label || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '') || 'item';
+    const taken = new Set(takenIds);
+    const base = `${prefix}-${slug}`;
+    let id = base;
+    for (let n = 2; taken.has(id); n++) id = `${base}-${n}`;
+    return id;
+}
+
 module.exports = {
+    makeUniqueId,
     getItemIcon,
     getSectionName,
     getItemFilePath,
