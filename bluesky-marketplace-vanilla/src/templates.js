@@ -16,7 +16,12 @@ const {
     getItemIcon,
     getSectionName,
     getItemFilePath,
+    findGroupOf,
+    getCustomGroups,
 } = require('./menuUtils');
+
+/** Separates section id and group id in the "Install to…" select values. */
+const INSTALL_TARGET_SEPARATOR = '::';
 
 const MODAL_ID = 'menuManager';
 const BODY_ID = 'menuManagerBody';
@@ -37,11 +42,49 @@ function renderSectionList(ctx) {
     return `<div class="list-group">
         ${sections.map((section) => `
             <button type="button"
-                class="list-group-item list-group-item-action ${section.id === activeSectionId ? 'active' : ''}"
+                class="list-group-item list-group-item-action d-flex align-items-center ${section.id === activeSectionId ? 'active' : ''}"
                 style="color: var(--bs-light);"
                 data-action="select-section" data-section-id="${esc(section.id)}">
-                ${esc(getSectionName(section, t))}
+                <span class="flex-grow-1 text-truncate">${esc(getSectionName(section, t))}</span>
+                ${section.isCustomTab ? '<span class="badge badge-success bg-success ml-2">Custom</span>' : ''}
             </button>`).join('')}
+    </div>
+    ${renderNewTabForm(ctx)}`;
+}
+
+/** "New tab" form under the section list. Custom tabs live in the custom dialogs folder store. */
+function renderNewTabForm(ctx) {
+    if (!ctx.mMenu.mPlaceDir) {
+        return `<p class="text-muted small mt-2 mb-0">Select a custom dialogs folder below to add your own tabs.</p>`;
+    }
+    return `<div class="input-group input-group-sm mt-2">
+        <input type="text" class="form-control form-control-sm" placeholder="New tab name"
+            maxlength="40" style="color: var(--dark-gray) !important;"
+            data-role="new-tab-label" data-submit-action="add-tab">
+        <div class="input-group-append">
+            <button type="button" class="btn btn-sm btn-primary m-0" title="Add tab" data-action="add-tab">
+                <i class="fas fa-plus"></i>
+            </button>
+        </div>
+    </div>`;
+}
+
+/** Rename / delete controls shown above the items of a user-created tab. */
+function renderCustomTabControls(section) {
+    if (!section || !section.isCustomTab) return '';
+    return `<div class="d-flex align-items-center mb-2">
+        <input type="text" class="form-control form-control-sm mr-2" maxlength="40"
+            style="color: var(--dark-gray) !important;"
+            value="${esc(section.label || '')}"
+            data-role="rename-tab-label" data-section-id="${esc(section.id)}" data-submit-action="rename-tab">
+        <button type="button" class="btn btn-sm btn-outline-primary m-0 mr-2" title="Rename tab"
+            data-action="rename-tab" data-section-id="${esc(section.id)}">
+            <i class="fas fa-check"></i>
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-danger m-0" title="Delete tab"
+            data-action="delete-tab" data-section-id="${esc(section.id)}">
+            <i class="fas fa-trash"></i>
+        </button>
     </div>`;
 }
 
@@ -91,19 +134,47 @@ function renderMenuItemCard(item, sectionId, ctx) {
 /** Equivalent of the SubmenuGroup helper inside SectionItems.jsx */
 function renderSubmenuGroup(item, sectionId, ctx) {
     const open = ctx.openSubmenuIds.has(item.id);
-    const label = ctx.t(item.id);
+    const label = item.label || ctx.t(item.id);
     const children = item.children || [];
+    const icon = item.icon || (item.isCustom ? ctx.mMenu.defaultCustomGroupIcon || 'fas fa-layer-group' : '');
     return `<div class="card mb-2">
-        <div class="card-header d-flex align-items-center py-2 px-3" role="button" style="cursor:pointer;"
-            data-action="toggle-submenu" data-item-id="${esc(item.id)}">
-            <i class="fas fa-chevron-${open ? 'down' : 'right'} mr-2"></i>
-            ${item.icon ? `<i class="${esc(item.icon)} mr-2"></i>` : ''}
-            <span class="font-weight-bold fw-semibold">${esc(label)}</span>
-            <span class="badge badge-secondary bg-secondary ml-auto">${children.length}</span>
+        <div class="card-header d-flex align-items-center py-2 px-3">
+            <div class="d-flex align-items-center flex-grow-1" role="button" style="cursor:pointer;"
+                data-action="toggle-submenu" data-item-id="${esc(item.id)}">
+                <i class="fas fa-chevron-${open ? 'down' : 'right'} mr-2"></i>
+                ${icon ? `<i class="${esc(icon)} mr-2"></i>` : ''}
+                <span class="font-weight-bold fw-semibold">${esc(label)}</span>
+                ${item.isCustom ? '<span class="badge badge-success bg-success ml-2">Custom group</span>' : ''}
+                <span class="badge badge-secondary bg-secondary ml-auto">${children.length}</span>
+            </div>
+            ${item.isCustom ? `<button type="button" class="btn btn-sm btn-outline-danger m-0 ml-2"
+                title="Delete button group"
+                data-action="delete-group" data-section-id="${esc(sectionId)}" data-item-id="${esc(item.id)}">
+                <i class="fas fa-trash"></i>
+            </button>` : ''}
         </div>
         ${open ? `<div class="card-body py-2 px-3">
+            ${children.length === 0 && item.isCustom
+                ? '<p class="text-muted small mb-0">Empty group. Install a custom dialog into it from the list below.</p>'
+                : ''}
             ${children.map((child) => renderMenuItemCard(child, sectionId, ctx)).join('')}
         </div>` : ''}
+    </div>`;
+}
+
+/** "New button group" form under a section's items. */
+function renderNewGroupForm(section, ctx) {
+    if (!section || !ctx.mMenu.mPlaceDir) return '';
+    return `<div class="input-group input-group-sm mt-2">
+        <input type="text" class="form-control form-control-sm" placeholder="New button group (dropdown) name"
+            maxlength="40" style="color: var(--dark-gray) !important;"
+            data-role="new-group-label" data-section-id="${esc(section.id)}" data-submit-action="add-group">
+        <div class="input-group-append">
+            <button type="button" class="btn btn-sm btn-primary m-0" title="Add button group"
+                data-action="add-group" data-section-id="${esc(section.id)}">
+                <i class="fas fa-plus"></i>
+            </button>
+        </div>
     </div>`;
 }
 
@@ -113,11 +184,14 @@ function renderSectionItems(section, ctx) {
         return '<p class="text-muted">Select a section to view its items.</p>';
     }
     const buttons = section.buttons || [];
-    return `<div>${buttons.map((item) => (
+    const empty = buttons.length === 0
+        ? `<p class="text-muted small">This tab is empty. Install a custom dialog into it from the list below; it appears in the main menu once it has a dialog.</p>`
+        : '';
+    return `<div>${renderCustomTabControls(section)}${empty}${buttons.map((item) => (
         item.children
             ? renderSubmenuGroup(item, section.id, ctx)
             : renderMenuItemCard(item, section.id, ctx)
-    )).join('')}</div>`;
+    )).join('')}${renderNewGroupForm(section, ctx)}</div>`;
 }
 
 function getErrorDetails(error) {
@@ -172,8 +246,11 @@ function renderCustomMenuCard(item, ctx) {
     const installedPills = item.sectionIds.length > 0 ? `<div class="mb-2">
             ${item.sectionIds.map((sid) => {
             const section = sections.find((s) => s.id === sid);
+            const group = findGroupOf(section, item.id);
+            const sectionName = section ? getSectionName(section, t) : sid;
+            const groupName = group ? (group.label || t(group.id)) : '';
             return `<span class="badge badge-info bg-info text-dark mr-1">
-                    ${esc(section ? getSectionName(section, t) : sid)}
+                    ${esc(groupName ? `${sectionName} › ${groupName}` : sectionName)}
                     <button type="button" class="btn btn-sm p-0 ml-1" aria-label="Remove"
                         style="font-size:0.7rem; line-height:1; vertical-align:baseline;"
                         data-action="remove-from-section" data-section-id="${esc(sid)}" data-item-id="${esc(item.id)}">&times;</button>
@@ -186,7 +263,11 @@ function renderCustomMenuCard(item, ctx) {
                 style="color: var(--dark-gray) !important;"
                 data-role="install-select" data-item-id="${esc(item.id)}">
                 <option value="">Install to section…</option>
-                ${sections.filter(s => !item.sectionIds.includes(s.id)).map((s) => `<option value="${esc(s.id)}">${esc(getSectionName(s, t))}</option>`).join('')}
+                ${sections.filter(s => !item.sectionIds.includes(s.id)).map((s) => {
+                    const sectionName = getSectionName(s, t);
+                    const groupOptions = getCustomGroups(s).map((g) => `<option value="${esc(`${s.id}${INSTALL_TARGET_SEPARATOR}${g.id}`)}">${esc(`${sectionName} › ${g.label || t(g.id)}`)}</option>`).join('');
+                    return `<option value="${esc(s.id)}">${esc(sectionName)}</option>${groupOptions}`;
+                }).join('')}
             </select>
             <button type="button" class="btn btn-sm btn-primary"
                 data-action="install-to-section" data-item-id="${esc(item.id)}">
@@ -254,7 +335,7 @@ function renderBody(ctx) {
     const {sections, activeSectionId} = ctx;
     const activeSection = sections.find((s) => s.id === activeSectionId) || null;
     const itemsHeading = activeSection
-        ? `Items — ${esc(activeSection.name || activeSection.id)}`
+        ? `Items — ${esc(getSectionName(activeSection, ctx.t))}`
         : 'Items';
 
     return `
@@ -305,10 +386,14 @@ function renderModalShell(ctx) {
 module.exports = {
     MODAL_ID,
     BODY_ID,
+    INSTALL_TARGET_SEPARATOR,
+    renderNewGroupForm,
     esc,
     getErrorDetails,
     renderErrorTooltip,
     renderSectionList,
+    renderNewTabForm,
+    renderCustomTabControls,
     renderMenuItemCard,
     renderSubmenuGroup,
     renderSectionItems,

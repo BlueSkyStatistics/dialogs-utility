@@ -19,6 +19,8 @@ function getItemIcon(item) {
  * Get display name for a section.
  */
 function getSectionName(section, t) {
+    // User-created tabs carry their own label; built-in tabs are translated by id.
+    if (section.label) return section.label;
     return t(section.id);
     // return section.name || section.tab || section.id || 'Unnamed Section';
 }
@@ -55,7 +57,8 @@ function collectMenus(sections) {
     for (const section of sections) {
         const allItems = flattenItems(section.buttons || []);
         for (const item of allItems) {
-            if (item.isCustom) {
+            // Button groups are containers, not dialogs
+            if (item.isCustom && !item.children) {
                 if (customMap.has(item.id)) {
                     customMap.get(item.id).sectionIds.push(section.id);
                 } else {
@@ -71,7 +74,38 @@ function collectMenus(sections) {
     return Array.from(customMap.values());
 }
 
+/**
+ * Build an id `${prefix}-${slug(label)}` that is not in `takenIds`
+ * (appends -2, -3, ... on collision).
+ */
+function makeUniqueId(prefix, label, takenIds) {
+    const slug = String(label || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '') || 'item';
+    const taken = new Set(takenIds);
+    const base = `${prefix}-${slug}`;
+    let id = base;
+    for (let n = 2; taken.has(id); n++) id = `${base}-${n}`;
+    return id;
+}
+
+/** The button group (a button with children) of `section` that holds `itemId`, if any. */
+function findGroupOf(section, itemId) {
+    return (section && section.buttons || []).find(
+        (btn) => Array.isArray(btn.children) && btn.children.some((child) => child.id === itemId)
+    );
+}
+
+/** Button groups created in the menu manager for a section. */
+function getCustomGroups(section) {
+    return (section && section.buttons || []).filter((btn) => btn.isCustom && Array.isArray(btn.children));
+}
+
 module.exports = {
+    makeUniqueId,
+    findGroupOf,
+    getCustomGroups,
     getItemIcon,
     getSectionName,
     getItemFilePath,
