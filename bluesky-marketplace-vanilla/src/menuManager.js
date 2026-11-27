@@ -21,10 +21,11 @@
 
 const templates = require('./templates');
 const {flattenItems, collectMenus, makeUniqueId} = require('./menuUtils');
-const fs = require("fs");
+// BlueSkyJS Phase 2: files go through the main process (the custom dialogs folder may be listed and its
+// dialogs deleted), dialogs through the app's remoteCompat; the custom menu store is mMenu.customMenuStore
+const fs = global.requireFromRoot("assets/js/utils/fileBridge");
 const path = require("path");
-const {dialog, getCurrentWindow} = require("@electron/remote");
-const {default: Store} = require("electron-store");
+const {dialog, getCurrentWindow} = global.requireFromRoot("assets/js/utils/remoteCompat");
 
 const MODAL_ID = templates.MODAL_ID;
 const BODY_ID = templates.BODY_ID;
