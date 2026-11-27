@@ -46,7 +46,7 @@ function renderSectionList(ctx) {
                 style="color: var(--bs-light);"
                 data-action="select-section" data-section-id="${esc(section.id)}">
                 <span class="flex-grow-1 text-truncate">${esc(getSectionName(section, t))}</span>
-                ${section.isCustomTab ? '<span class="badge badge-success bg-success ml-2">Custom</span>' : ''}
+                ${section.isCustomTab ? '<span class="badge badge-success bg-success ms-2">Custom</span>' : ''}
             </button>`).join('')}
     </div>
     ${renderNewTabForm(ctx)}`;
@@ -73,11 +73,11 @@ function renderNewTabForm(ctx) {
 function renderCustomTabControls(section) {
     if (!section || !section.isCustomTab) return '';
     return `<div class="d-flex align-items-center mb-2">
-        <input type="text" class="form-control form-control-sm mr-2" maxlength="40"
+        <input type="text" class="form-control form-control-sm me-2" maxlength="40"
             style="color: var(--dark-gray) !important;"
             value="${esc(section.label || '')}"
             data-role="rename-tab-label" data-section-id="${esc(section.id)}" data-submit-action="rename-tab">
-        <button type="button" class="btn btn-sm btn-outline-primary m-0 mr-2" title="Rename tab"
+        <button type="button" class="btn btn-sm btn-outline-primary m-0 me-2" title="Rename tab"
             data-action="rename-tab" data-section-id="${esc(section.id)}">
             <i class="fas fa-check"></i>
         </button>
@@ -94,15 +94,15 @@ function renderCustomTabControls(section) {
  */
 function renderItemIcon(item, ctx) {
     const icon = getItemIcon(item);
-    if (icon) return `<i class="${esc(icon)} mr-2"></i>`;
+    if (icon) return `<i class="${esc(icon)} me-2"></i>`;
     const nav = (item.resolvedDialog && item.resolvedDialog.nav) || {};
     const resolve = ctx.mMenu && ctx.mMenu._resolveNavImgUrl;
     const imgUrl = typeof resolve === 'function'
         ? resolve.call(ctx.mMenu, {img: nav.img || item.img}, item)
         : undefined;
-    if (imgUrl) return `<img class="btnimg mr-2" src="${esc(imgUrl)}" alt="" draggable="false">`;
+    if (imgUrl) return `<img class="btnimg me-2" src="${esc(imgUrl)}" alt="" draggable="false">`;
     // user-installed dialog with no icon and no usable image: default icon
-    if (item.isCustom) return `<i class="${esc((ctx.mMenu && ctx.mMenu.defaultCustomIcon) || 'icon-light-up')} mr-2"></i>`;
+    if (item.isCustom) return `<i class="${esc((ctx.mMenu && ctx.mMenu.defaultCustomIcon) || 'icon-light-up')} me-2"></i>`;
     return '';
 }
 
@@ -117,12 +117,12 @@ function renderMenuItemCard(item, sectionId, ctx) {
             ${renderItemIcon(item, ctx)}
             <span class="flex-grow-1 text-truncate">${esc(label)}</span>
             <button type="button"
-                class="btn btn-sm ${hidden ? 'btn-outline-success' : 'btn-outline-warning'} ml-2"
+                class="btn btn-sm ${hidden ? 'btn-outline-success' : 'btn-outline-warning'} ms-2"
                 title="${hidden ? 'Show' : 'Hide'}"
                 data-action="toggle-visibility" data-item-id="${esc(item.id)}" data-hidden="${hidden ? 'true' : 'false'}">
                 <i class="fas ${hidden ? 'fa-eye' : 'fa-eye-slash'}"></i>
             </button>
-            ${item.isCustom ? `<button type="button" class="btn btn-sm btn-outline-danger ml-2"
+            ${item.isCustom ? `<button type="button" class="btn btn-sm btn-outline-danger ms-2"
                 title="Remove from section"
                 data-action="remove-from-section" data-section-id="${esc(sectionId)}" data-item-id="${esc(item.id)}">
                 <i class="fas fa-times"></i>
@@ -141,13 +141,13 @@ function renderSubmenuGroup(item, sectionId, ctx) {
         <div class="card-header d-flex align-items-center py-2 px-3">
             <div class="d-flex align-items-center flex-grow-1" role="button" style="cursor:pointer;"
                 data-action="toggle-submenu" data-item-id="${esc(item.id)}">
-                <i class="fas fa-chevron-${open ? 'down' : 'right'} mr-2"></i>
-                ${icon ? `<i class="${esc(icon)} mr-2"></i>` : ''}
+                <i class="fas fa-chevron-${open ? 'down' : 'right'} me-2"></i>
+                ${icon ? `<i class="${esc(icon)} me-2"></i>` : ''}
                 <span class="font-weight-bold fw-semibold">${esc(label)}</span>
-                ${item.isCustom ? '<span class="badge badge-success bg-success ml-2">Custom group</span>' : ''}
-                <span class="badge badge-secondary bg-secondary ml-auto">${children.length}</span>
+                ${item.isCustom ? '<span class="badge badge-success bg-success ms-2">Custom group</span>' : ''}
+                <span class="badge badge-secondary bg-secondary ms-auto">${children.length}</span>
             </div>
-            ${item.isCustom ? `<button type="button" class="btn btn-sm btn-outline-danger m-0 ml-2"
+            ${item.isCustom ? `<button type="button" class="btn btn-sm btn-outline-danger m-0 ms-2"
                 title="Delete button group"
                 data-action="delete-group" data-section-id="${esc(sectionId)}" data-item-id="${esc(item.id)}">
                 <i class="fas fa-trash"></i>
@@ -214,12 +214,12 @@ function getErrorStackId(itemId) {
 function renderErrorTooltip(item) {
     const {message, stack} = getErrorDetails(item.error);
     const stackId = getErrorStackId(item.id);
-    const tooltipContent = `<div class="text-left" style="min-width:18rem; max-width:26rem;">
+    const tooltipContent = `<div class="text-start" style="min-width:18rem; max-width:26rem;">
         <div class="font-weight-bold mb-1">Error</div>
         <div class="mb-2" style="user-select:text; cursor:text; white-space:pre-wrap;">${esc(message)}</div>
         <button type="button" class="btn btn-sm btn-link p-0 text-light"
-            data-toggle="collapse" data-bs-toggle="collapse"
-            data-target="#${stackId}" data-bs-target="#${stackId}"
+            data-bs-toggle="collapse"
+            data-bs-target="#${stackId}"
             aria-expanded="false" aria-controls="${stackId}">
             Show technical details
         </button>
@@ -228,7 +228,7 @@ function renderErrorTooltip(item) {
         </div>
     </div>`;
 
-    return `<button type="button" class="btn btn-sm p-0 text-warning mr-1 mb-1"
+    return `<button type="button" class="btn btn-sm p-0 text-warning me-1 mb-1"
         aria-label="Show error details"
         data-error-tooltip="true"
         data-error-tooltip-content="${esc(tooltipContent)}">
@@ -249,9 +249,9 @@ function renderCustomMenuCard(item, ctx) {
             const group = findGroupOf(section, item.id);
             const sectionName = section ? getSectionName(section, t) : sid;
             const groupName = group ? (group.label || t(group.id)) : '';
-            return `<span class="badge badge-info bg-info text-dark mr-1">
+            return `<span class="badge badge-info bg-info text-dark me-1">
                     ${esc(groupName ? `${sectionName} › ${groupName}` : sectionName)}
-                    <button type="button" class="btn btn-sm p-0 ml-1" aria-label="Remove"
+                    <button type="button" class="btn btn-sm p-0 ms-1" aria-label="Remove"
                         style="font-size:0.7rem; line-height:1; vertical-align:baseline;"
                         data-action="remove-from-section" data-section-id="${esc(sid)}" data-item-id="${esc(item.id)}">&times;</button>
                 </span>`;
@@ -259,7 +259,7 @@ function renderCustomMenuCard(item, ctx) {
         </div>` : ''
 
     const installControls = `<div class="d-flex align-items-center">
-            <select class="form-control form-control-sm form-select form-select-sm mr-2"
+            <select class="form-control form-control-sm form-select form-select-sm me-2"
                 style="color: var(--dark-gray) !important;"
                 data-role="install-select" data-item-id="${esc(item.id)}">
                 <option value="">Install to section…</option>
@@ -281,13 +281,13 @@ function renderCustomMenuCard(item, ctx) {
                 ${renderItemIcon(item, ctx)}
                 <span class="font-weight-bold fw-semibold flex-grow-1 text-truncate">${esc(label)}</span>
                 ${item.error ? renderErrorTooltip(item) : ''}
-                <button type="button" class="btn btn-sm ml-2" title="Reload dialog" 
-                    data-toggle="tooltip" data-placement="top"
+                <button type="button" class="btn btn-sm ms-2" title="Reload dialog" 
+                    data-bs-toggle="tooltip" data-bs-placement="top"
                     data-action="reload-custom-menu" data-item-id="${esc(item.id)}" data-file-path="${esc(item.path || '')}">
                     <i class="fas fa-sync"></i>
                 </button>
-                <button type="button" class="btn btn-sm btn-danger ml-2" title="Delete custom menu"
-                    data-toggle="tooltip" data-placement="top"
+                <button type="button" class="btn btn-sm btn-danger ms-2" title="Delete custom menu"
+                    data-bs-toggle="tooltip" data-bs-placement="top"
                     data-action="delete-custom-menu" data-item-id="${esc(item.id)}" data-file-path="${esc(item.path || '')}">
                     <i class="fas fa-trash"></i>
                 </button>
@@ -368,7 +368,7 @@ function renderModalShell(ctx) {
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="${MODAL_ID}Label">Menu Manager</h5>
-<!--                    <button type="button" class="close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close">-->
+<!--                    <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">-->
 <!--                        <span aria-hidden="true"><i class="fas fa-times"></i></span>-->
 <!--                    </button>-->
                 </div>
@@ -376,7 +376,7 @@ function renderModalShell(ctx) {
                     ${renderBody(ctx)}
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>

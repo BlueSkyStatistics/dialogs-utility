@@ -174,9 +174,9 @@ class MenuManager {
     _disposeTooltips() {
         const $ = jq();
         if ($ && $.fn && $.fn.tooltip) {
-            $(`#${MODAL_ID} [data-toggle="tooltip"], #${MODAL_ID} [data-error-tooltip]`).tooltip('dispose');
+            $(`#${MODAL_ID} [data-bs-toggle="tooltip"], #${MODAL_ID} [data-error-tooltip]`).tooltip('dispose');
         } else {
-            document.querySelectorAll(`#${MODAL_ID} [data-toggle="tooltip"], #${MODAL_ID} [data-error-tooltip]`).forEach((el) => {
+            document.querySelectorAll(`#${MODAL_ID} [data-bs-toggle="tooltip"], #${MODAL_ID} [data-error-tooltip]`).forEach((el) => {
                 bs()?.Tooltip?.getInstance(el)?.dispose();
             });
         }
@@ -185,7 +185,7 @@ class MenuManager {
     _initializeTooltips() {
         if (!hasDom()) return;
         const $ = jq();
-        const regularSelector = `#${MODAL_ID} [data-toggle="tooltip"]`;
+        const regularSelector = `#${MODAL_ID} [data-bs-toggle="tooltip"]`;
         const errorSelector = `#${MODAL_ID} [data-error-tooltip]`;
         const errorTemplate = '<div class="tooltip menu-manager-error-tooltip" role="tooltip" style="pointer-events:auto;"><div class="arrow"></div><div class="tooltip-inner" style="max-width:26rem; text-align:left;"></div></div>';
 
